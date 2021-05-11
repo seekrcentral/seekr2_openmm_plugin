@@ -417,7 +417,7 @@ void CudaIntegrateElberLangevinStepKernel::initialize(const System& system, cons
         ofstream datafile; // open datafile for writing
         datafile.open(outputFileName, std::ios_base::app); // write new file
         datafile << "#\"Crossed boundary ID\",\"crossing counter\",\"total time (ps)\"\n";
-        datafile << "# An asterisk(*) indicates that source milestone was never crossed - starred statistics are invalid and should be excluded.\n";
+        datafile << "# An asterisk(*) indicates that source milestone was never crossed - asterisked statistics are invalid and should be excluded.\n";
         datafile.close(); // close data file
     }
 }
