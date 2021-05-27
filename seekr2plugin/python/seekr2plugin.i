@@ -36,7 +36,7 @@ namespace std {
 try:
     import openmm as mm
     import openmm.unit as unit
-except ImportError:
+except ModuleNotFoundError:
     import simtk.openmm as mm
     import simtk.unit as unit
 %}
