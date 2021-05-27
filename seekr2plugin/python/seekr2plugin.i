@@ -33,8 +33,12 @@ namespace std {
 %}
 
 %pythoncode %{
-import openmm as mm
-import openmm.unit as unit
+try:
+    import openmm as mm
+    import openmm.unit as unit
+except ImportError:
+    import simtk.openmm as mm
+    import simtk.unit as unit
 %}
 
 /*
