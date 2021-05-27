@@ -34,9 +34,9 @@ namespace std {
 
 %pythoncode %{
 try:
-    import openmm as mm
+    import openmm as mm # mark0
     import openmm.unit as unit
-except ModuleNotFoundError:
+except:
     import simtk.openmm as mm
     import simtk.unit as unit
 %}
