@@ -146,19 +146,23 @@ void CudaIntegrateMmvtLangevinStepKernel::initialize(const System& system, const
         saveStatisticsBool = true;
     }
     for (int i=0; i<integrator.getNumMilestoneGroups(); i++) {
-        bool foundForceGroup=false;
+        // check no longer necessary since forces no longer correspond to 
+        // milestones TODO: marked for removal
+        /*bool foundForceGroup=false;
         for (int j=0; j<system.getNumForces(); j++) {
             if (system.getForce(j).getForceGroup() == integrator.getMilestoneGroup(i))
                 foundForceGroup=true;
         }
         if (foundForceGroup == false)
             throw OpenMMException("System contains no force groups used to detect MMVT boundary crossings. Check for mismatches between force group assignments and the groups added to the MMVT integrator.");
+        */
         milestoneGroups.push_back(integrator.getMilestoneGroup(i));
     }
-    bitvector.clear();
-    for (int i=0; i<integrator.getNumMilestoneGroups(); i++) {
-        bitvector.push_back(pow(2,integrator.getMilestoneGroup(i)));
-    }
+    //bitvector.clear(); // TODO: marked for removal
+    //bitvector.push_back(2); // SEEKR2 boundaries will always be in force group 1
+    //for (int i=0; i<integrator.getNumMilestoneGroups(); i++) {
+    //    bitvector.push_back(pow(2,integrator.getMilestoneGroup(i)));
+    //}
     bounceCounter = integrator.getBounceCounter();
     incubationTime = 0.0;
     firstCrossingTime = 0.0;
@@ -239,23 +243,33 @@ void CudaIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, const Mm
     
     // Monitor for one or more milestone crossings
     float value = 0.0;
+    int bitcode;
     bool bounced = false;
     bool includeForces = false;
     bool includeEnergy = true;
     
-    for (int i=0; i<integrator.getNumMilestoneGroups(); i++) {
-        value = context.calcForcesAndEnergy(includeForces, includeEnergy, bitvector[i]);
-        if (value > 0.0) { // take a step back and reverse velocities
-            if (cu.getStepCount() <= 0)
-                throw OpenMMException("MMVT simulation bouncing on first step: the system will be trapped behind a boundary. Check and revise MMVT boundary definitions and/or atomic positions.");
-            bounced = true;
-            // Write to output file
-            ofstream datafile; // open datafile for writing
-            datafile.open(outputFileName, std::ios_base::app); // append to file
-            datafile.setf(std::ios::fixed,std::ios::floatfield);
-            datafile.precision(3);
+    //value = context.calcForcesAndEnergy(includeForces, includeEnergy, bitvector[i]);
+    value = context.calcForcesAndEnergy(includeForces, includeEnergy, 2);
+    if (value > 0.0) { // take a step back and reverse velocities
+        if (cu.getStepCount() <= 0)
+            throw OpenMMException("MMVT simulation bouncing on first step: the system will be trapped behind a boundary. Check and revise MMVT boundary definitions and/or atomic positions.");
+        
+        bounced = true;
+        // Write to output file
+        ofstream datafile; // open datafile for writing
+        datafile.open(outputFileName, std::ios_base::app); // append to file
+        datafile.setf(std::ios::fixed,std::ios::floatfield);
+        datafile.precision(3);
+        bitcode = static_cast<int>(value);
+        for (int i=0; i<integrator.getNumMilestoneGroups(); i++) {
+            if ((bitcode % 2) == 0) {
+                // if value is not showing this as crossed, continue
+                bitcode = bitcode >> 1;
+                continue;
+            }
+            bitcode = bitcode >> 1;
+            
             datafile << milestoneGroups[i] << "," << bounceCounter << "," << context.getTime() << "\n";
-            datafile.close(); // close data file
             if (saveStateBool == true) {
                 State myState = context.getOwner().getState(State::Positions | State::Velocities);
                 stringstream buffer;
@@ -282,6 +296,17 @@ void CudaIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, const Mm
             }
             T_alpha = cu.getTime() - firstCrossingTime;
             if (saveStatisticsBool == true) {
+                //throw OpenMMException("Statistics file feature not working: saveStatisticsBool must be set to 'false' at this time");
+                /* // TODO: remove
+                // This feature is temporarily disabled. With the improvement
+                // of moving all boundary definitions to a single force group,
+                // this feature is now broken. Since it is not actively used
+                // yet, we will postpone its functionality. To get this 
+                // working, this plugin would need to be provided with an
+                // array of milestone indices, similar to the function that
+                // milestoneGroups used to have (but now, milestoneGroups
+                // will merely be an array of size 1).
+                */
                 ofstream stats;
                 stats.open(saveStatisticsFileName, ios_base::trunc);
                 stats.setf(std::ios::fixed,std::ios::floatfield);
@@ -301,10 +326,12 @@ void CudaIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, const Mm
                 }
                 stats << "T_alpha: " << T_alpha << "\n";  
                 stats.close();
+                
             }
             previousMilestoneCrossed = i;
             bounceCounter++;
         }
+        datafile.close(); // close data file
     }
     
     // If one or more milestone boundaries were crossed, perform bounce

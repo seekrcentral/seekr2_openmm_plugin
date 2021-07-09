@@ -34,15 +34,18 @@ system = prmtop.createSystem(nonbondedMethod=PME, nonbondedCutoff=1*nanometer, c
 mypdb = PDBFile('tryp_ben_new.pdb')
 
 
-myforce1 = CustomCentroidBondForce(2, "-k*(distance(g1,g2)^2-radius^2)")
+myforce1 = CustomCentroidBondForce(2, "bitcode*step(k*(distance(g1,g2)^2-radius^2))")
 mygroup1a = myforce1.addGroup(rec_indices)
 mygroup2a = myforce1.addGroup(lig_indices)
 myforce1.setForceGroup(1)
+myforce1.addPerBondParameter('bitcode')
 myforce1.addPerBondParameter('k')
 myforce1.addPerBondParameter('radius')
-myforce1.addBond([mygroup1a, mygroup2a], [1.0e-9*kilojoules_per_mole, 11.0*angstroms])
+myforce1.addBond([mygroup1a, mygroup2a], [1.0, -1.0*kilojoules_per_mole/angstroms**2, 11.0*angstroms])
+myforce1.addBond([mygroup1a, mygroup2a], [2.0, 1.0*kilojoules_per_mole/angstroms**2, 13.0*angstroms])
 forcenum1 = system.addForce(myforce1)
 
+"""
 myforce2 = CustomCentroidBondForce(2, "k*(distance(g1,g2)^2-radius^2)")
 mygroup1b = myforce2.addGroup(rec_indices)
 mygroup2b = myforce2.addGroup(lig_indices)
@@ -51,6 +54,7 @@ myforce2.addPerBondParameter('k')
 myforce2.addPerBondParameter('radius')
 myforce2.addBond([mygroup1b, mygroup2b], [1.0e-9*kilojoules_per_mole, 13.0*angstroms])
 forcenum2 = system.addForce(myforce2)
+"""
 
 integrator = MmvtLangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds, "tryp_test_mmvt_filename.txt")
 integrator.addMilestoneGroup(1)

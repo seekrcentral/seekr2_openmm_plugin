@@ -95,7 +95,7 @@ private:
     OpenMM::CudaArray* oldPosqCorrection;
     OpenMM::CudaArray* oldVelm;
     //OpenMM::CudaArray* oldForce;
-    std::vector<int> bitvector;
+    //std::vector<int> bitvector; // DELETE
     std::vector<int> milestoneGroups;
     bool saveStateBool = false;
     std::string saveStateFileName;
