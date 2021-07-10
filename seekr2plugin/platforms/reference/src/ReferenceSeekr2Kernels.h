@@ -100,7 +100,7 @@ private:
     std::string saveStateFileName;
     bool saveStatisticsBool = false;
     std::string saveStatisticsFileName;
-    std::vector<int> bitvector;
+    //std::vector<int> bitvector; // TODO: marked for removal
     std::vector<std::string> globalParameterNames;
     int numMilestoneGroups, bounceCounter, previousMilestoneCrossed;
     double firstCrossingTime;

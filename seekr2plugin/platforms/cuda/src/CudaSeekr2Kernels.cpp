@@ -295,43 +295,44 @@ void CudaIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, const Mm
                 incubationTime = 0.0;
             }
             T_alpha = cu.getTime() - firstCrossingTime;
-            if (saveStatisticsBool == true) {
-                //throw OpenMMException("Statistics file feature not working: saveStatisticsBool must be set to 'false' at this time");
-                /* // TODO: remove
-                // This feature is temporarily disabled. With the improvement
-                // of moving all boundary definitions to a single force group,
-                // this feature is now broken. Since it is not actively used
-                // yet, we will postpone its functionality. To get this 
-                // working, this plugin would need to be provided with an
-                // array of milestone indices, similar to the function that
-                // milestoneGroups used to have (but now, milestoneGroups
-                // will merely be an array of size 1).
-                */
-                ofstream stats;
-                stats.open(saveStatisticsFileName, ios_base::trunc);
-                stats.setf(std::ios::fixed,std::ios::floatfield);
-                stats.precision(3);
-                for (int i = 0; i < N_alpha_beta.size(); i++) {
-                    stats << "N_alpha_" << milestoneGroups[i] << ": " << N_alpha_beta[i] << "\n";
-                }
-                int nij_index = 0;
-                for (int i = 0; i < integrator.getNumMilestoneGroups(); i++) {
-                    for (int j = 0; j < integrator.getNumMilestoneGroups(); j++) {
-                        stats << "N_" << milestoneGroups[i] << "_" << milestoneGroups[j] << "_alpha: " << Nij_alpha[i][j] << "\n"; 
-                        nij_index += 1;
-                    }
-                }
-                for (int i = 0; i < integrator.getNumMilestoneGroups(); i++) {
-                    stats << "R_" << milestoneGroups[i] << "_alpha: " << Ri_alpha[i] << "\n";       
-                }
-                stats << "T_alpha: " << T_alpha << "\n";  
-                stats.close();
-                
-            }
+            
             previousMilestoneCrossed = i;
             bounceCounter++;
         }
         datafile.close(); // close data file
+        if (saveStatisticsBool == true) {
+            //throw OpenMMException("Statistics file feature not working: saveStatisticsBool must be set to 'false' at this time");
+            /* // TODO: remove
+            // This feature is temporarily disabled. With the improvement
+            // of moving all boundary definitions to a single force group,
+            // this feature is now broken. Since it is not actively used
+            // yet, we will postpone its functionality. To get this 
+            // working, this plugin would need to be provided with an
+            // array of milestone indices, similar to the function that
+            // milestoneGroups used to have (but now, milestoneGroups
+            // will merely be an array of size 1).
+            */
+            ofstream stats;
+            stats.open(saveStatisticsFileName, ios_base::trunc);
+            stats.setf(std::ios::fixed,std::ios::floatfield);
+            stats.precision(3);
+            for (int i = 0; i < N_alpha_beta.size(); i++) {
+                stats << "N_alpha_" << milestoneGroups[i] << ": " << N_alpha_beta[i] << "\n";
+            }
+            int nij_index = 0;
+            for (int i = 0; i < integrator.getNumMilestoneGroups(); i++) {
+                for (int j = 0; j < integrator.getNumMilestoneGroups(); j++) {
+                    stats << "N_" << milestoneGroups[i] << "_" << milestoneGroups[j] << "_alpha: " << Nij_alpha[i][j] << "\n"; 
+                    nij_index += 1;
+                }
+            }
+            for (int i = 0; i < integrator.getNumMilestoneGroups(); i++) {
+                stats << "R_" << milestoneGroups[i] << "_alpha: " << Ri_alpha[i] << "\n";       
+            }
+            stats << "T_alpha: " << T_alpha << "\n";  
+            stats.close();
+            
+        }
     }
     
     // If one or more milestone boundaries were crossed, perform bounce

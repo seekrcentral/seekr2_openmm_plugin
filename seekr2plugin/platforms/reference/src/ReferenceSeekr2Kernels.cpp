@@ -126,14 +126,6 @@ void ReferenceIntegrateMmvtLangevinStepKernel::initialize(const System& system, 
         masses[i] = system.getParticleMass(i);
     SimTKOpenMMUtilities::setRandomNumberSeed((unsigned int) integrator.getRandomNumberSeed());
     
-    //New parameters for running integrator
-    /*
-    int numStateTransitions = static_cast<int>(pow(integrator.getNumMilestoneGroups(), 2));
-    vector<vector <int> > Nij_alpha_(numStateTransitions);
-    this->Nij_alpha = Nij_alpha_;
-    vector<int> Ri_alpha_(integrator.getNumMilestoneGroups());
-    this->Ri_alpha = Ri_alpha_;
-    */
     N_alpha_beta = vector<int> (integrator.getNumMilestoneGroups());
     for (int i=0; i<integrator.getNumMilestoneGroups(); i++) {
         N_alpha_beta[i] = 0;
@@ -151,11 +143,10 @@ void ReferenceIntegrateMmvtLangevinStepKernel::initialize(const System& system, 
     }
     T_alpha = 0.0;
     outputFileName = integrator.getOutputFileName();
-    /*cout << "system.getNumForces(): " << system.getNumForces() << "\n";
-    for (int i=0; i<system.getNumForces(); i++) {
-        cout << "force group for " << i << ": " << system.getForce(i).getForceGroup() << "\n";
-    }*/
+    
     for (int i=0; i<integrator.getNumMilestoneGroups(); i++) {
+        // TODO: marked for removal
+        /*
         bool foundForceGroup=false;
         for (int j=0; j<system.getNumForces(); j++) {
             if (system.getForce(j).getForceGroup() == integrator.getMilestoneGroup(i))
@@ -163,6 +154,7 @@ void ReferenceIntegrateMmvtLangevinStepKernel::initialize(const System& system, 
         }
         if (foundForceGroup == false)
             throw OpenMMException("System contains no force groups used to detect MMVT boundary crossings. Check for mismatches between force group assignments and the groups added to the MMVT integrator.");
+        */
         milestoneGroups.push_back(integrator.getMilestoneGroup(i));
     }
     saveStateFileName = integrator.getSaveStateFileName();
@@ -177,10 +169,11 @@ void ReferenceIntegrateMmvtLangevinStepKernel::initialize(const System& system, 
     } else {
         saveStatisticsBool = true;
     }
+    /* //TODO: marked for removal
     bitvector.clear();
     for (int i=0; i<milestoneGroups.size(); i++) {
         bitvector.push_back(pow(2,milestoneGroups[i]));
-    }
+    }*/
     bounceCounter = integrator.getBounceCounter();
     incubationTime = 0.0;
     firstCrossingTime = 0.0;
@@ -246,24 +239,29 @@ void ReferenceIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, con
     bool includeForces = false;
     bool includeEnergy = true;
     double value = 0.0; // The value to monitor for crossing events
+    int bitcode;
     bool bounced = false;
     // Handle bit string here
-    for (int i=0; i<milestoneGroups.size(); i++) {
-        value = context.calcForcesAndEnergy(includeForces, includeEnergy, bitvector[i]);
-        //cout << "value for milestone " << i << ": " << value << "\n";
-    
-        if (value > 0.0) { // take a step back and reverse velocities
-            if (data.stepCount <= 0)
-        	    throw OpenMMException("MMVT simulation bouncing on first step: the system is trapped behind a boundary. Check and revise MMVT boundary definitions and atomic positions.");
+    value = context.calcForcesAndEnergy(includeForces, includeEnergy, 2);
+    if (value > 0.0) { // take a step back and reverse velocities
+        if (data.stepCount <= 0)
+    	    throw OpenMMException("MMVT simulation bouncing on first step: the system is trapped behind a boundary. Check and revise MMVT boundary definitions and atomic positions.");
+        
+        ofstream datafile; // open datafile for writing
+        datafile.open(outputFileName, std::ios_base::app); // append to file
+        datafile.setf(std::ios::fixed,std::ios::floatfield);
+        datafile.precision(3);
+        bitcode = static_cast<int>(value);
+        for (int i=0; i<milestoneGroups.size(); i++) {
             bounced = true;
             // Write to output file
-            ofstream datafile; // open datafile for writing
-            datafile.open(outputFileName, std::ios_base::app); // append to file
-            datafile.setf(std::ios::fixed,std::ios::floatfield);
-            datafile.precision(3);
+            if ((bitcode % 2) == 0) {
+                // if value is not showing this as crossed, continue
+                bitcode = bitcode >> 1;
+                continue;
+            }
+            bitcode = bitcode >> 1;
             datafile << milestoneGroups[i] << "," << bounceCounter << ","<< context.getTime() << "\n";
-            datafile.close(); // close data file
-            
             if (saveStateBool == true) {
                 State myState = context.getOwner().getState(State::Positions | State::Velocities);
                 stringstream buffer;
@@ -288,29 +286,31 @@ void ReferenceIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, con
                 incubationTime = 0.0;
             }
             T_alpha = data.time - firstCrossingTime;
-            if (saveStatisticsBool == true) {
-                ofstream stats;
-                stats.open(saveStatisticsFileName, ios_base::trunc);
-                stats.setf(std::ios::fixed,std::ios::floatfield);
-                stats.precision(3);
-                for (int i = 0; i < N_alpha_beta.size(); i++) {
-                    stats << "N_alpha_" << milestoneGroups[i] << ": " << N_alpha_beta[i] << "\n";
-                }
-                int nij_index = 0;
-                for (int i = 0; i < integrator.getNumMilestoneGroups(); i++) {
-                    for (int j = 0; j < integrator.getNumMilestoneGroups(); j++) {
-                        stats << "N_" << milestoneGroups[i] << "_" << milestoneGroups[j] << "_alpha: " << Nij_alpha[i][j] << "\n"; 
-                        nij_index += 1;
-                    }
-                }
-                for (int i = 0; i < integrator.getNumMilestoneGroups(); i++) {
-                    stats << "R_" << milestoneGroups[i] << "_alpha: " << Ri_alpha[i] << "\n";       
-                }
-                stats << "T_alpha: " << T_alpha << "\n";  
-                stats.close();
-            }
+            
             previousMilestoneCrossed = i;
             bounceCounter++;
+        }
+        datafile.close(); // close data file
+        if (saveStatisticsBool == true) {
+            ofstream stats;
+            stats.open(saveStatisticsFileName, ios_base::trunc);
+            stats.setf(std::ios::fixed,std::ios::floatfield);
+            stats.precision(3);
+            for (int i = 0; i < N_alpha_beta.size(); i++) {
+                stats << "N_alpha_" << milestoneGroups[i] << ": " << N_alpha_beta[i] << "\n";
+            }
+            int nij_index = 0;
+            for (int i = 0; i < integrator.getNumMilestoneGroups(); i++) {
+                for (int j = 0; j < integrator.getNumMilestoneGroups(); j++) {
+                    stats << "N_" << milestoneGroups[i] << "_" << milestoneGroups[j] << "_alpha: " << Nij_alpha[i][j] << "\n"; 
+                    nij_index += 1;
+                }
+            }
+            for (int i = 0; i < integrator.getNumMilestoneGroups(); i++) {
+                stats << "R_" << milestoneGroups[i] << "_alpha: " << Ri_alpha[i] << "\n";       
+            }
+            stats << "T_alpha: " << T_alpha << "\n";  
+            stats.close();
         }
     }
     if (bounced == true) {
