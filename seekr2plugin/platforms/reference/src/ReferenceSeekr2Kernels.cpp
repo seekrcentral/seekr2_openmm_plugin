@@ -354,7 +354,7 @@ void ReferenceIntegrateElberLangevinStepKernel::initialize(const System& system,
                 foundForceGroup=true;
         }
         if (foundForceGroup == false)
-            throw OpenMMException("System contains no force groups used to detect MMVT boundary crossings. Check for mismatches between force group assignments and the groups added to the MMVT integrator.");
+            throw OpenMMException("System contains no force groups used to detect Elber boundary crossings. Check for mismatches between force group assignments and the groups added to the MMVT integrator.");
         srcMilestoneGroups.push_back(integrator.getSrcMilestoneGroup(i));
         srcMilestoneValues.push_back(-INFINITY);
     }
@@ -365,7 +365,7 @@ void ReferenceIntegrateElberLangevinStepKernel::initialize(const System& system,
                 foundForceGroup=true;
         }
         if (foundForceGroup == false)
-            throw OpenMMException("System contains no force groups used to detect MMVT boundary crossings. Check for mismatches between force group assignments and the groups added to the MMVT integrator.");
+            throw OpenMMException("System contains no force groups used to detect Elber boundary crossings. Check for mismatches between force group assignments and the groups added to the MMVT integrator.");
         destMilestoneGroups.push_back(integrator.getDestMilestoneGroup(i));
         destMilestoneValues.push_back(-INFINITY);
     }
