@@ -77,7 +77,11 @@ INSTALL (FILES ${API_ONLY_INCLUDE_FILES_INTERNAL} DESTINATION include/internal)
 # Enable testing
 
 ENABLE_TESTING()
-ADD_SUBDIRECTORY(serialization/tests)
+
+set(SEEKR2_BUILD_SERIALIZATION_TESTS TRUE CACHE BOOL "Whether to build serialization test cases")
+IF(SEEKR2_BUILD_SERIALIZATION_TESTS)
+  ADD_SUBDIRECTORY(serialization/tests)
+ENDIF(SEEKR2_BUILD_SERIALIZATION_TESTS)
 
 # Build the implementations for different platforms
 
