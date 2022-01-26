@@ -34,6 +34,7 @@
 #include "openmm/Platform.h"
 #include "openmm/internal/AssertionUtilities.h"
 #include "MmvtLangevinIntegrator.h"
+#include "MmvtLangevinMiddleIntegrator.h"
 #include "openmm/serialization/XmlSerializer.h"
 #include <iostream>
 #include <sstream>
@@ -70,10 +71,37 @@ void testSerialization() {
     ASSERT_EQUAL(integ1.getSaveStatisticsFileName(), integ2.getSaveStatisticsFileName());
 }
 
+void testSerializationMiddle() {
+    // Create an Integrator.
+
+    MmvtLangevinMiddleIntegrator integ1(301.1, 0.95, 0.001, "/tmp/dummyMiddle.txt");
+    integ1.setRandomNumberSeed(18);
+    integ1.addMilestoneGroup(4);
+    integ1.setSaveStateFileName("/tmp/dummyStateMiddle.txt");
+    integ1.setSaveStatisticsFileName("/tmp/dummyStatisticsMiddle.txt");
+
+    // Serialize and then deserialize it.
+
+    stringstream buffer;
+    XmlSerializer::serialize<MmvtLangevinMiddleIntegrator>(&integ1, "Integrator", buffer);
+    MmvtLangevinMiddleIntegrator* copy = XmlSerializer::deserialize<MmvtLangevinMiddleIntegrator>(buffer);
+
+    // Compare the two integrators to see if they are identical.
+    
+    MmvtLangevinMiddleIntegrator& integ2 = *copy;
+    ASSERT_EQUAL(integ1.getTemperature(), integ2.getTemperature());
+    ASSERT_EQUAL(integ1.getFriction(), integ2.getFriction());
+    ASSERT_EQUAL(integ1.getRandomNumberSeed(), integ2.getRandomNumberSeed());
+    ASSERT_EQUAL(integ1.getMilestoneGroup(0), integ2.getMilestoneGroup(0));
+    ASSERT_EQUAL(integ1.getSaveStateFileName(), integ2.getSaveStateFileName());
+    ASSERT_EQUAL(integ1.getSaveStatisticsFileName(), integ2.getSaveStatisticsFileName());
+}
+
 int main() {
     try {
         registerMmvtSerializationProxies();
         testSerialization();
+        testSerializationMiddle();
     }
     catch(const exception& e) {
         cout << "exception: " << e.what() << endl;

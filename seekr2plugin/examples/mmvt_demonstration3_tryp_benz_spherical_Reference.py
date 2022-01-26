@@ -2,7 +2,7 @@ from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
 from sys import stdout
-from seekr2plugin import MmvtLangevinIntegrator, vectori, vectord
+from seekr2plugin import MmvtLangevinMiddleIntegrator, vectori, vectord
 import seekr2plugin
 from time import time
 import numpy as np
@@ -48,7 +48,7 @@ myforce2.addBond([mygroup1b, mygroup2b], [1.0e-9*kilojoules_per_mole, 13.0*angst
 myforce2.addBond([mygroup1b, mygroup2b], [1.0e-9*kilojoules_per_mole, 12.5*angstroms])
 forcenum2 = system.addForce(myforce2)
 
-integrator = MmvtLangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds, "tryp_test_filename.txt")
+integrator = MmvtLangevinMiddleIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds, "tryp_test_filename.txt")
 integrator.addMilestoneGroup(1)
 integrator.addMilestoneGroup(2)
 #integrator.setSaveStateFileName("states/trp_benz")
@@ -67,7 +67,7 @@ simulation.context.setVelocitiesToTemperature(300*kelvin)
 simulation.context.setPeriodicBoxVectors(*box_vector)
     
 #simulation.minimizeEnergy()
-#simulation.reporters.append(PDBReporter('tryp_ben_output.pdb', 20))
+simulation.reporters.append(PDBReporter('tryp_ben_output.pdb', 5))
 simulation.reporters.append(StateDataReporter(stdout, 10, step=True,
         potentialEnergy=True, temperature=True, volume=True))
 simulation.step(20)

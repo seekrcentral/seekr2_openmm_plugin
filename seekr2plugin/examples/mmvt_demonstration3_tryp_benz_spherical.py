@@ -12,7 +12,7 @@ from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
 
-from seekr2plugin import MmvtLangevinIntegrator, vectori, vectord
+from seekr2plugin import MmvtLangevinMiddleIntegrator, vectori, vectord
 import seekr2plugin
 
 lig_indices = [3221, 3222, 3223, 3224, 3225, 3226, 3227, 3228, 3229]
@@ -56,7 +56,7 @@ myforce2.addBond([mygroup1b, mygroup2b], [1.0e-9*kilojoules_per_mole, 13.0*angst
 forcenum2 = system.addForce(myforce2)
 """
 
-integrator = MmvtLangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds, "tryp_test_mmvt_filename.txt")
+integrator = MmvtLangevinMiddleIntegrator(300*kelvin, 1/picosecond, 0.004*picoseconds, "tryp_test_mmvt_filename.txt")
 integrator.addMilestoneGroup(1)
 integrator.addMilestoneGroup(2)
 

@@ -44,11 +44,15 @@
 
 #include "MmvtLangevinIntegrator.h"
 #include "ElberLangevinIntegrator.h"
+#include "MmvtLangevinMiddleIntegrator.h"
+#include "ElberLangevinMiddleIntegrator.h"
 
 #include "openmm/serialization/SerializationProxy.h"
 
 #include "MmvtLangevinIntegratorProxy.h"
 #include "ElberLangevinIntegratorProxy.h"
+#include "MmvtLangevinMiddleIntegratorProxy.h"
+#include "ElberLangevinMiddleIntegratorProxy.h"
 
 #if defined(WIN32)
     #include <windows.h>
@@ -74,7 +78,9 @@ using namespace Seekr2Plugin;
 
 extern "C" OPENMM_EXPORT_SEEKR2 void registerMmvtSerializationProxies() {
     SerializationProxy::registerProxy(typeid(MmvtLangevinIntegrator), new MmvtLangevinIntegratorProxy());
+    SerializationProxy::registerProxy(typeid(MmvtLangevinMiddleIntegrator), new MmvtLangevinMiddleIntegratorProxy());
 }
 extern "C" OPENMM_EXPORT_SEEKR2 void registerElberSerializationProxies() {
     SerializationProxy::registerProxy(typeid(ElberLangevinIntegrator), new ElberLangevinIntegratorProxy());
+    SerializationProxy::registerProxy(typeid(ElberLangevinMiddleIntegrator), new ElberLangevinMiddleIntegratorProxy());
 }

@@ -52,6 +52,8 @@ extern "C" OPENMM_EXPORT void registerKernelFactories() {
         CudaSeekr2KernelFactory* factory = new CudaSeekr2KernelFactory();
         platform.registerKernelFactory(IntegrateMmvtLangevinStepKernel::Name(), factory);
         platform.registerKernelFactory(IntegrateElberLangevinStepKernel::Name(), factory);
+        platform.registerKernelFactory(IntegrateMmvtLangevinMiddleStepKernel::Name(), factory);
+        platform.registerKernelFactory(IntegrateElberLangevinMiddleStepKernel::Name(), factory);
     }
     catch (std::exception ex) {
         // Ignore
@@ -74,5 +76,9 @@ KernelImpl* CudaSeekr2KernelFactory::createKernelImpl(std::string name, const Pl
         return new CudaIntegrateMmvtLangevinStepKernel(name, platform, cu);
     if (name == IntegrateElberLangevinStepKernel::Name())
         return new CudaIntegrateElberLangevinStepKernel(name, platform, cu);
+    if (name == IntegrateMmvtLangevinMiddleStepKernel::Name())
+        return new CudaIntegrateMmvtLangevinMiddleStepKernel(name, platform, cu);
+    if (name == IntegrateElberLangevinMiddleStepKernel::Name())
+        return new CudaIntegrateElberLangevinMiddleStepKernel(name, platform, cu);
     throw OpenMMException((std::string("Tried to create kernel with illegal kernel name '")+name+"'").c_str());
 }

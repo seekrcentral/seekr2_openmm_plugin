@@ -38,6 +38,8 @@
 
 #include "MmvtLangevinIntegrator.h"
 #include "ElberLangevinIntegrator.h"
+#include "MmvtLangevinMiddleIntegrator.h"
+#include "ElberLangevinMiddleIntegrator.h"
 #include "openmm/KernelImpl.h"
 #include "openmm/Platform.h"
 #include "openmm/System.h"
@@ -105,6 +107,68 @@ public:
      * Compute the kinetic energy.
      */
     virtual double computeKineticEnergy(OpenMM::ContextImpl& context, const ElberLangevinIntegrator& integrator) = 0;
+};
+
+/**
+ * This kernel is invoked by MmvtLangevinMiddleIntegrator to take one time step.
+ */
+class IntegrateMmvtLangevinMiddleStepKernel : public OpenMM::KernelImpl {
+public:
+    static std::string Name() {
+        return "IntegrateMmvtLangevinMiddleStep";
+    }
+    IntegrateMmvtLangevinMiddleStepKernel(std::string name, const OpenMM::Platform& platform) : KernelImpl(name, platform) {
+    }
+    /**
+     * Initialize the kernel.
+     *
+     * @param system     the System this kernel will be applied to
+     * @param integrator the MmvtLangevinMiddleIntegrator this kernel will be used for
+     * @param force      the Force to get particle parameters from
+     */
+    virtual void initialize(const OpenMM::System& system, const MmvtLangevinMiddleIntegrator& integrator) = 0;
+    /**
+     * Execute the kernel.
+     *
+     * @param context        the context in which to execute this kernel
+     * @param integrator     the MmvtLangevinMiddleIntegrator this kernel is being used for
+     */
+    virtual void execute(OpenMM::ContextImpl& context, const MmvtLangevinMiddleIntegrator& integrator) = 0;
+    /**
+     * Compute the kinetic energy.
+     */
+    virtual double computeKineticEnergy(OpenMM::ContextImpl& context, const MmvtLangevinMiddleIntegrator& integrator) = 0;
+};
+
+/**
+ * This kernel is invoked by ElberLangevinMiddleIntegrator to take one time step.
+ */
+class IntegrateElberLangevinMiddleStepKernel : public OpenMM::KernelImpl {
+public:
+    static std::string Name() {
+        return "IntegrateElberLangevinMiddleStep";
+    }
+    IntegrateElberLangevinMiddleStepKernel(std::string name, const OpenMM::Platform& platform) : KernelImpl(name, platform) {
+    }
+    /**
+     * Initialize the kernel.
+     *
+     * @param system     the System this kernel will be applied to
+     * @param integrator the ElberLangevinMiddleIntegrator this kernel will be used for
+     * @param force      the Force to get particle parameters from
+     */
+    virtual void initialize(const OpenMM::System& system, const ElberLangevinMiddleIntegrator& integrator) = 0;
+    /**
+     * Execute the kernel.
+     *
+     * @param context        the context in which to execute this kernel
+     * @param integrator     the ElberLangevinMiddleIntegrator this kernel is being used for
+     */
+    virtual void execute(OpenMM::ContextImpl& context, const ElberLangevinMiddleIntegrator& integrator) = 0;
+    /**
+     * Compute the kinetic energy.
+     */
+    virtual double computeKineticEnergy(OpenMM::ContextImpl& context, const ElberLangevinMiddleIntegrator& integrator) = 0;
 };
 
 } // namespace Seekr2Plugin

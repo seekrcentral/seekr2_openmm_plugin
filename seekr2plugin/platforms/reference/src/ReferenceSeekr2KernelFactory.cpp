@@ -52,6 +52,8 @@ extern "C" OPENMM_EXPORT void registerKernelFactories() {
             ReferenceSeekr2KernelFactory* factory = new ReferenceSeekr2KernelFactory();
             platform.registerKernelFactory(IntegrateMmvtLangevinStepKernel::Name(), factory);
             platform.registerKernelFactory(IntegrateElberLangevinStepKernel::Name(), factory);
+            platform.registerKernelFactory(IntegrateMmvtLangevinMiddleStepKernel::Name(), factory);
+            platform.registerKernelFactory(IntegrateElberLangevinMiddleStepKernel::Name(), factory);
         }
     }
 }
@@ -66,6 +68,10 @@ KernelImpl* ReferenceSeekr2KernelFactory::createKernelImpl(std::string name, con
         return new ReferenceIntegrateMmvtLangevinStepKernel(name, platform, data);
     if (name == IntegrateElberLangevinStepKernel::Name())
         return new ReferenceIntegrateElberLangevinStepKernel(name, platform, data);
+    if (name == IntegrateMmvtLangevinMiddleStepKernel::Name())
+        return new ReferenceIntegrateMmvtLangevinMiddleStepKernel(name, platform, data);
+    if (name == IntegrateElberLangevinMiddleStepKernel::Name())
+        return new ReferenceIntegrateElberLangevinMiddleStepKernel(name, platform, data);
     throw OpenMMException((std::string("Tried to create kernel with illegal kernel name '")+name+"'").c_str());
 }
 

@@ -25,6 +25,8 @@ namespace std {
 %{
 #include "MmvtLangevinIntegrator.h"
 #include "ElberLangevinIntegrator.h"
+#include "MmvtLangevinMiddleIntegrator.h"
+#include "ElberLangevinMiddleIntegrator.h"
 #include "OpenMM.h"
 #include "OpenMMAmoeba.h"
 #include "OpenMMDrude.h"
@@ -34,7 +36,7 @@ namespace std {
 
 %pythoncode %{
 try:
-    import openmm as mm # mark0
+    import openmm as mm
     import openmm.unit as unit
 except:
     import simtk.openmm as mm
@@ -204,6 +206,162 @@ except:
 
 %}
 
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::getStepSize() const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::setStepSize(double size) const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::getConstraintTolerance() const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::setConstraintTolerance(double tol) const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::step(int steps) const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::getOutputFileName() const %{
+
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::setOutputFileName(std::string fileName) const %{
+
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::getSaveStateFileName() const %{
+
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::setSaveStateFileName(std::string fileName) const %{
+
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::getSaveStatisticsFileName() const %{
+
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::setSaveStatisticsFileName(std::string fileName) const %{
+
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::getMilestoneGroup(int index) const %{
+
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::getNumMilestoneGroups() const %{
+
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::addMilestoneGroup(int milestoneGroup) const %{
+
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::getRandomNumberSeed() const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::setRandomNumberSeed(int seed) const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::getBounceCounter() const %{
+
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::setBounceCounter(int counter) const %{
+
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::getStepSize() const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::setStepSize(double size) const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::getConstraintTolerance() const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::setConstraintTolerance(double tol) const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::step(int steps) const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::getOutputFileName() const %{
+
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::setOutputFileName(std::string fileName) const %{
+
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::getSaveStateFileName() const %{
+
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::setSaveStateFileName(std::string fileName) const %{
+
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::getSrcMilestoneGroup(int index) const %{
+
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::getNumSrcMilestoneGroups() const %{
+
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::addSrcMilestoneGroup(int milestoneGroup) const %{
+
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::getDestMilestoneGroup(int index) const %{
+
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::getNumDestMilestoneGroups() const %{
+
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::addDestMilestoneGroup(int milestoneGroup) const %{
+
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::getRandomNumberSeed() const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::setRandomNumberSeed(int seed) const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::getCrossingCounter() const %{
+
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::setCrossingCounter(int counter) const %{
+
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::getEndOnSrcMilestone() const %{
+
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::setEndOnSrcMilestone(bool endOnSrc) const %{
+
+%}
+
 namespace Seekr2Plugin {
 
 class MmvtLangevinIntegrator : public OpenMM::Integrator {
@@ -251,6 +409,96 @@ public:
 class ElberLangevinIntegrator : public OpenMM::Integrator {
 public:
     ElberLangevinIntegrator(double temperature, double frictionCoeff, 
+        double stepSize, std::string fileName);
+    
+    double getStepSize() const;
+    
+    void setStepSize(double size);
+    
+    double getConstraintTolerance() const;
+    
+    void setConstraintTolerance(double tol);
+    
+    virtual void step(int steps);
+    
+    std::string getOutputFileName() const;
+    
+    void setOutputFileName(std::string fileName);
+    
+    std::string getSaveStateFileName() const;
+    
+    void setSaveStateFileName(std::string fileName);
+    
+    int getSrcMilestoneGroup(int index) const;
+    
+    int getNumSrcMilestoneGroups() const;
+    
+    int addSrcMilestoneGroup(int milestoneGroup);
+    
+    int getDestMilestoneGroup(int index) const;
+    
+    int getNumDestMilestoneGroups() const;
+    
+    int addDestMilestoneGroup(int milestoneGroup);
+    
+    int getRandomNumberSeed() const;
+    
+    void setRandomNumberSeed(int seed);
+    
+    int getCrossingCounter() const;
+    
+    void setCrossingCounter(int counter);
+    
+    bool getEndOnSrcMilestone() const;
+    
+    void setEndOnSrcMilestone(bool endOnSrc);
+};
+
+class MmvtLangevinMiddleIntegrator : public OpenMM::Integrator {
+public:
+    MmvtLangevinMiddleIntegrator(double temperature, double frictionCoeff, 
+        double stepSize, std::string fileName);
+    
+    double getStepSize() const;
+    
+    void setStepSize(double size);
+    
+    double getConstraintTolerance() const;
+    
+    void setConstraintTolerance(double tol);
+    
+    virtual void step(int steps);
+    
+    std::string getOutputFileName() const;
+    
+    void setOutputFileName(std::string fileName);
+    
+    std::string getSaveStateFileName() const;
+    
+    void setSaveStateFileName(std::string fileName);
+    
+    std::string getSaveStatisticsFileName() const;
+    
+    void setSaveStatisticsFileName(std::string fileName);
+    
+    int getMilestoneGroup(int index) const;
+    
+    int getNumMilestoneGroups() const;
+    
+    int addMilestoneGroup(int milestoneGroup);
+    
+    int getRandomNumberSeed() const;
+    
+    void setRandomNumberSeed(int seed);
+    
+    int getBounceCounter() const;
+    
+    void setBounceCounter(int counter);
+};
+
+class ElberLangevinMiddleIntegrator : public OpenMM::Integrator {
+public:
+    ElberLangevinMiddleIntegrator(double temperature, double frictionCoeff, 
         double stepSize, std::string fileName);
     
     double getStepSize() const;

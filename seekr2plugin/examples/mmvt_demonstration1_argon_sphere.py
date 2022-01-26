@@ -2,7 +2,7 @@ from simtk.openmm.app import *
 from simtk.openmm import *
 from simtk.unit import *
 from sys import stdout
-from seekr2plugin import MmvtLangevinIntegrator, vectori, vectord
+from seekr2plugin import MmvtLangevinMiddleIntegrator, vectori, vectord
 import seekr2plugin
 from time import time
 import numpy as np
@@ -67,7 +67,7 @@ myforce.addPerBondParameter('radius')
 myforce.addBond([mygroup1], [1.0e-9*kilojoules_per_mole, 12.0*angstroms, 12.0*angstroms, 12.0*angstroms, 10.0*angstroms])
 forcenum = system.addForce(myforce)
 
-integrator = MmvtLangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds, "test_filename.txt")
+integrator = MmvtLangevinMiddleIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds, "test_filename.txt")
 integrator.addMilestoneGroup(1)
 
 platform = Platform.getPlatformByName('CUDA')
