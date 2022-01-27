@@ -38,10 +38,14 @@
 
 #include "ElberLangevinIntegrator.h"
 #include "openmm/internal/AssertionUtilities.h"
+#include "openmm/HarmonicBondForce.h"
+#include "openmm/NonbondedForce.h"
 #include "openmm/Context.h"
 #include "openmm/Platform.h"
 #include "openmm/System.h"
 #include "openmm/VerletIntegrator.h"
+#include "openmm/reference/SimTKOpenMMRealType.h"
+#include "sfmt/SFMT.h"
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -52,8 +56,227 @@ using namespace std;
 
 extern "C" OPENMM_EXPORT void registerSeekr2CudaKernelFactories();
 
-void testIntegrator() {
-    // put tests here
+void testSingleBond() {
+    //std::cout << "running testSingleBond\n";
+    System system;
+    Platform& platform = Platform::getPlatformByName("CUDA");
+    system.addParticle(2.0);
+    system.addParticle(2.0);
+    ElberLangevinIntegrator integrator(0, 0.1, 0.01, "/tmp/dummy.txt");
+    HarmonicBondForce* forceField = new HarmonicBondForce();
+    forceField->addBond(0, 1, 1.5, 1);
+    system.addForce(forceField);
+    Context context(system, integrator, platform);
+    vector<Vec3> positions(2);
+    positions[0] = Vec3(-1, 0, 0);
+    positions[1] = Vec3(1, 0, 0);
+    context.setPositions(positions);
+    
+    // This is simply a damped harmonic oscillator, so compare it to the analytical solution.
+    
+    double freq = std::sqrt(1-0.05*0.05);
+    for (int i = 0; i < 1000; ++i) {
+        State state = context.getState(State::Positions | State::Velocities);
+        double time = state.getTime();
+        double expectedDist = 1.5+0.5*std::exp(-0.05*time)*std::cos(freq*time);
+        ASSERT_EQUAL_VEC(Vec3(-0.5*expectedDist, 0, 0), state.getPositions()[0], 0.02);
+        ASSERT_EQUAL_VEC(Vec3(0.5*expectedDist, 0, 0), state.getPositions()[1], 0.02);
+        double expectedSpeed = -0.5*std::exp(-0.05*time)*(0.05*std::cos(freq*time)+freq*std::sin(freq*time));
+        ASSERT_EQUAL_VEC(Vec3(-0.5*expectedSpeed, 0, 0), state.getVelocities()[0], 0.02);
+        ASSERT_EQUAL_VEC(Vec3(0.5*expectedSpeed, 0, 0), state.getVelocities()[1], 0.02);
+        integrator.step(1);
+    }
+    
+    // Now set the friction to 0 and see if it conserves energy.
+    
+    integrator.setFriction(0.0);
+    context.setPositions(positions);
+    State state = context.getState(State::Energy);
+    double initialEnergy = state.getKineticEnergy()+state.getPotentialEnergy();
+    for (int i = 0; i < 1000; ++i) {
+        state = context.getState(State::Energy);
+        double energy = state.getKineticEnergy()+state.getPotentialEnergy();
+        ASSERT_EQUAL_TOL(initialEnergy, energy, 0.01);
+        integrator.step(1);
+    }
+}
+
+void testTemperature() {
+    const int numParticles = 8;
+    const double temp = 100.0;
+    //std::cout << "running testTemperature\n";
+    Platform& platform = Platform::getPlatformByName("CUDA");
+    System system;
+    ElberLangevinIntegrator integrator(temp, 2.0, 0.01, "/tmp/dummy.txt");
+    NonbondedForce* forceField = new NonbondedForce();
+    for (int i = 0; i < numParticles; ++i) {
+        system.addParticle(2.0);
+        forceField->addParticle((i%2 == 0 ? 1.0 : -1.0), 1.0, 5.0);
+    }
+    system.addForce(forceField);
+    Context context(system, integrator, platform);
+    vector<Vec3> positions(numParticles);
+    for (int i = 0; i < numParticles; ++i)
+        positions[i] = Vec3((i%2 == 0 ? 2 : -2), (i%4 < 2 ? 2 : -2), (i < 4 ? 2 : -2));
+    context.setPositions(positions);
+    
+    // Let it equilibrate.
+    
+    integrator.step(10000);
+    
+    // Now run it for a while and see if the temperature is correct.
+    
+    double ke = 0.0;
+    for (int i = 0; i < 10000; ++i) {
+        State state = context.getState(State::Energy);
+        ke += state.getKineticEnergy();
+        integrator.step(1);
+    }
+    ke /= 10000;
+    double expected = 0.5*numParticles*3*BOLTZ*temp;
+    ASSERT_USUALLY_EQUAL_TOL(expected, ke, 6/std::sqrt(10000.0));
+}
+
+void testConstraints() {
+    const int numParticles = 8;
+    const int numConstraints = 5;
+    const double temp = 100.0;
+    Platform& platform = Platform::getPlatformByName("CUDA");
+    System system;
+    ElberLangevinIntegrator integrator(temp, 2.0, 0.01, "/tmp/dummy.txt");
+    integrator.setConstraintTolerance(1e-5);
+    NonbondedForce* forceField = new NonbondedForce();
+    for (int i = 0; i < numParticles; ++i) {
+        system.addParticle(10.0);
+        forceField->addParticle((i%2 == 0 ? 0.2 : -0.2), 0.5, 5.0);
+    }
+    system.addConstraint(0, 1, 1.0);
+    system.addConstraint(1, 2, 1.0);
+    system.addConstraint(2, 3, 1.0);
+    system.addConstraint(4, 5, 1.0);
+    system.addConstraint(6, 7, 1.0);
+    system.addForce(forceField);
+    Context context(system, integrator, platform);
+    vector<Vec3> positions(numParticles);
+    vector<Vec3> velocities(numParticles);
+    OpenMM_SFMT::SFMT sfmt;
+    init_gen_rand(0, sfmt);
+
+    for (int i = 0; i < numParticles; ++i) {
+        positions[i] = Vec3(i/2, (i+1)/2, 0);
+        velocities[i] = Vec3(genrand_real2(sfmt)-0.5, genrand_real2(sfmt)-0.5, genrand_real2(sfmt)-0.5);
+    }
+    context.setPositions(positions);
+    context.setVelocities(velocities);
+
+    // Simulate it and see whether the constraints remain satisfied.
+    for (int i = 0; i < 1000; ++i) {
+        State state = context.getState(State::Positions);
+        for (int j = 0; j < numConstraints; ++j) {
+            int particle1, particle2;
+            double distance;
+            system.getConstraintParameters(j, particle1, particle2, distance);
+            Vec3 p1 = state.getPositions()[particle1];
+            Vec3 p2 = state.getPositions()[particle2];
+            double dist = std::sqrt((p1[0]-p2[0])*(p1[0]-p2[0])+(p1[1]-p2[1])*(p1[1]-p2[1])+(p1[2]-p2[2])*(p1[2]-p2[2]));
+            ASSERT_EQUAL_TOL(distance, dist, 1e-4);
+        }
+
+        integrator.step(1);
+
+    }
+}
+
+void testConstrainedMasslessParticles() {
+    //std::cout << "running testConstrainedMasslessParticles\n";
+    Platform& platform = Platform::getPlatformByName("CUDA");
+    System system;
+    system.addParticle(0.0);
+    system.addParticle(1.0);
+    system.addConstraint(0, 1, 1.5);
+    vector<Vec3> positions(2);
+    positions[0] = Vec3(-1, 0, 0);
+    positions[1] = Vec3(1, 0, 0);
+    ElberLangevinIntegrator integrator(300.0, 2.0, 0.01, "/tmp/dummy.txt");
+    bool failed = false;
+    try {
+        // This should throw an exception.
+        
+        Context context(system, integrator, platform);
+    }
+    catch (exception& ex) {
+        failed = true;
+    }
+    ASSERT(failed);
+    
+    // Now make both particles massless, which should work.
+    
+    system.setParticleMass(1, 0.0);
+    Context context(system, integrator, platform);
+    context.setPositions(positions);
+    context.setVelocitiesToTemperature(300.0);
+    integrator.step(1);
+    State state = context.getState(State::Velocities);
+    ASSERT_EQUAL(0.0, state.getVelocities()[0][0]);
+}
+
+void testRandomSeed() {
+    const int numParticles = 8;
+    const double temp = 100.0;
+    //std::cout << "running testRandomSeed\n";
+    Platform& platform = Platform::getPlatformByName("CUDA");
+    System system;
+    ElberLangevinIntegrator integrator(temp, 2.0, 0.01, "/tmp/dummy.txt");
+    NonbondedForce* forceField = new NonbondedForce();
+    for (int i = 0; i < numParticles; ++i) {
+        system.addParticle(2.0);
+        forceField->addParticle((i%2 == 0 ? 1.0 : -1.0), 1.0, 5.0);
+    }
+    system.addForce(forceField);
+    vector<Vec3> positions(numParticles);
+    vector<Vec3> velocities(numParticles);
+    for (int i = 0; i < numParticles; ++i) {
+        positions[i] = Vec3((i%2 == 0 ? 2 : -2), (i%4 < 2 ? 2 : -2), (i < 4 ? 2 : -2));
+        velocities[i] = Vec3(0, 0, 0);
+    }
+
+    // Try twice with the same random seed.
+
+    integrator.setRandomNumberSeed(5);
+    Context context(system, integrator, platform);
+    context.setPositions(positions);
+    context.setVelocities(velocities);
+    integrator.step(10);
+    State state1 = context.getState(State::Positions);
+    context.reinitialize();
+    context.setPositions(positions);
+    context.setVelocities(velocities);
+    integrator.step(10);
+    State state2 = context.getState(State::Positions);
+
+    // Try twice with a different random seed.
+
+    integrator.setRandomNumberSeed(10);
+    context.reinitialize();
+    context.setPositions(positions);
+    context.setVelocities(velocities);
+    integrator.step(10);
+    State state3 = context.getState(State::Positions);
+    context.reinitialize();
+    context.setPositions(positions);
+    context.setVelocities(velocities);
+    integrator.step(10);
+    State state4 = context.getState(State::Positions);
+
+    // Compare the results.
+
+    for (int i = 0; i < numParticles; i++) {
+        for (int j = 0; j < 3; j++) {
+            ASSERT_EQUAL_TOL(state1.getPositions()[i][j], state2.getPositions()[i][j], 1e-6);
+            ASSERT_EQUAL_TOL(state3.getPositions()[i][j], state4.getPositions()[i][j], 1e-6);
+            ASSERT(state1.getPositions()[i][j] != state3.getPositions()[i][j]);
+        }
+    }
 }
 
 int main(int argc, char* argv[]) {
@@ -61,7 +284,16 @@ int main(int argc, char* argv[]) {
         registerSeekr2CudaKernelFactories();
         if (argc > 1)
             Platform::getPlatformByName("CUDA").setPropertyDefaultValue("CudaPrecision", string(argv[1]));
-        testIntegrator();
+        std::cout << "running testSingleBond\n";
+        testSingleBond();
+        std::cout << "running testTemperature\n";
+        testTemperature();
+        std::cout << "running testConstraints\n";
+        testConstraints();
+        std::cout << "running testConstrainedMasslessParticles\n";
+        testConstrainedMasslessParticles();
+        std::cout << "running testRandomSeed\n";
+        testRandomSeed();
     }
     catch(const std::exception& e) {
         std::cout << "exception: " << e.what() << std::endl;
