@@ -9,14 +9,15 @@ An OpenMM plugin for SEEKR2.
 
 ## TABLE OF CONTENTS:
 1. INTRODUCTION
-2. INSTALLATION OF OPENMM
-3. INSTALLATION OF SEEKR2_OPENMM_PLUGIN
-4. MMVT LANGEVIN INTEGRATOR
-5. ELBER LANGEVIN INTEGRATOR:
-6. MMVT/ELBER SURFACE DEFINITIONS
-7. SAMPLES SCRIPTS
-8. THE CROSSINGS FILE
-9. CROSSING STATE ANALYSIS
+2. INSTALLATION WITH CONDA
+3. INSTALLATION OF OPENMM FROM SOURCE
+4. INSTALLATION OF SEEKR2_OPENMM_PLUGIN FROM SOURCE
+5. MMVT LANGEVIN INTEGRATOR
+6. ELBER LANGEVIN INTEGRATOR:
+7. MMVT/ELBER SURFACE DEFINITIONS
+8. SAMPLES SCRIPTS
+9. THE CROSSINGS FILE
+10. CROSSING STATE ANALYSIS
 
 
 ## INTRODUCTION:
@@ -32,9 +33,58 @@ restored, the velocities are reversed, the crossing event is logged, and
 recorded. For Elber milestoning, crossing events of the various milestones
 are recorded by the integrators.
 
-## INSTALLATION OF OPENMM
+## INSTALLATION FROM CONDA
 
-The SEEKR2 OpenMM plugin requires OpenMM to run.
+The easiest and fastest way to install this plugin is to use Conda.
+
+Download and install Conda for Python3 (We have tested python3.5, and 
+python3.6). Conda can be downloaded from: 
+https://conda.io/en/latest/miniconda.html
+
+Or, one may install Conda from the command line:
+
+```
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+sh Miniconda3-latest-Linux-x86_64.sh
+```
+
+Make sure Conda is installed by running:
+
+```
+which conda
+```
+
+You will want to use Python 3.8, so you can see which version you are with the command:
+
+```
+python -V
+```
+
+If it says any other version besides Python 3.8, then enter:
+
+```
+conda install python=3.8
+```
+
+If you want you can create a conda environment,
+
+```
+conda create --name SEEKR python=3.8
+```
+
+With Conda working, You may create and activate any environment you wish, or use the base environment. Install the SEEKR2 OpenMM Plugin:
+
+```
+conda install -c conda-forge seekr2_openmm_plugin
+```
+
+OpenMM will be installed automatically alongside the plugin.
+
+## INSTALLATION OF OPENMM FROM SOURCE
+
+Under certain circumstances, users may with to install this plugin from source.
+In that case, one may also want to install OpenMM from source. The SEEKR2 
+OpenMM plugin requires OpenMM to run.
 
 The instructions for installing OpenMM from source can be found on OpenMM's
 main manual: http://docs.openmm.org/6.1.0/userguide/library.html
@@ -115,7 +165,7 @@ successful.
 
 
 
-## SEEKR2 PLUGIN INSTALLATION:
+## SEEKR2 PLUGIN INSTALLATION FROM SOURCE
 
 Clone the SEEKR2 Plugin and cd into the directory, then perform necessary 
 build steps.
