@@ -51,6 +51,7 @@ void MmvtLangevinIntegratorProxy::serialize(const void* object, SerializationNod
     node.setDoubleProperty("temperature", integrator.getTemperature());
     node.setDoubleProperty("friction", integrator.getFriction());
     node.setIntProperty("randomSeed", integrator.getRandomNumberSeed());
+    node.setIntProperty("bounceCounter", integrator.getBounceCounter());
     node.setStringProperty("outputFileName", integrator.getOutputFileName());
     node.setStringProperty("saveStateFileName", integrator.getSaveStateFileName());
     node.setStringProperty("saveStatisticsFileName", integrator.getSaveStatisticsFileName());
@@ -67,6 +68,7 @@ void* MmvtLangevinIntegratorProxy::deserialize(const SerializationNode& node) co
             node.getDoubleProperty("friction"), node.getDoubleProperty("stepSize"), node.getStringProperty("outputFileName"));
     integrator->setConstraintTolerance(node.getDoubleProperty("constraintTolerance"));
     integrator->setRandomNumberSeed(node.getIntProperty("randomSeed"));
+    integrator->setBounceCounter(node.getIntProperty("bounceCounter"));
     integrator->setSaveStateFileName(node.getStringProperty("saveStateFileName"));
     integrator->setSaveStatisticsFileName(node.getStringProperty("saveStatisticsFileName"));
     const SerializationNode& perMilestoneGroups = node.getChildNode("milestoneGroups");

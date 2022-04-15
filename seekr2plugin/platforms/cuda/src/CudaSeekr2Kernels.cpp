@@ -169,6 +169,7 @@ void CudaIntegrateMmvtLangevinStepKernel::initialize(const System& system, const
         datafile << "#\"Bounced boundary ID\",\"bounce index\",\"total time (ps)\"\n";
         datafile.close(); // close data file
     }
+    
 }
 
 void CudaIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, const MmvtLangevinIntegrator& integrator) {
@@ -179,6 +180,10 @@ void CudaIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, const Mm
     double temperature = integrator.getTemperature();
     double friction = integrator.getFriction();
     double stepSize = integrator.getStepSize();
+    float value = 0.0;
+    bool includeForces = false;
+    bool includeEnergy = true;
+    
     cu.getIntegrationUtilities().setNextStepSize(stepSize);
     if (temperature != prevTemp || friction != prevFriction || stepSize != prevStepSize) {
         // Calculate the integration parameters.
@@ -195,6 +200,13 @@ void CudaIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, const Mm
         prevTemp = temperature;
         prevFriction = friction;
         prevStepSize = stepSize;
+    }
+    
+    if (cu.getStepCount() <= 0) {
+        value = context.calcForcesAndEnergy(includeForces, includeEnergy, 2);
+        if (value > 0.0) { // take a step back and reverse velocities
+            throw OpenMMException("MMVT simulation bouncing on first step: the system will be trapped behind a boundary. Check and revise MMVT boundary definitions and/or atomic positions.");
+        }
     }
     
     // Call the first integration kernel.
@@ -227,24 +239,36 @@ void CudaIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, const Mm
     integration.computeVirtualSites();
     
     // Monitor for one or more milestone crossings
-    float value = 0.0;
     int bitcode;
     bool bounced = false;
-    bool includeForces = false;
-    bool includeEnergy = true;
+    int num_bounced_surfaces = 0;
+    
     
     //value = context.calcForcesAndEnergy(includeForces, includeEnergy, bitvector[i]);
     value = context.calcForcesAndEnergy(includeForces, includeEnergy, 2);
+    
     if (value > 0.0) { // take a step back and reverse velocities
-        if (cu.getStepCount() <= 0)
-            throw OpenMMException("MMVT simulation bouncing on first step: the system will be trapped behind a boundary. Check and revise MMVT boundary definitions and/or atomic positions.");
+        //if (cu.getStepCount() <= 0)
+        //    throw OpenMMException("MMVT simulation bouncing on first step: the system will be trapped behind a boundary. Check and revise MMVT boundary definitions and/or atomic positions.");
         
         bounced = true;
         // Write to output file
+        
         ofstream datafile; // open datafile for writing
         datafile.open(outputFileName, std::ios_base::app); // append to file
-        datafile.setf(std::ios::fixed,std::ios::floatfield);
+        datafile.setf(std::ios::fixed, std::ios::floatfield);
         datafile.precision(3);
+        
+        bitcode = static_cast<int>(value);
+        // check for corner bounce so as not to save state
+        for (int i=0; i<milestoneGroups.size(); i++) {
+            if ((bitcode % 2) != 0) {
+                // count the number of bounced surfaces
+                num_bounced_surfaces++;
+            }
+            bitcode = bitcode >> 1;
+        }
+        
         bitcode = static_cast<int>(value);
         for (int i=0; i<integrator.getNumMilestoneGroups(); i++) {
             if ((bitcode % 2) == 0) {
@@ -255,7 +279,7 @@ void CudaIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, const Mm
             bitcode = bitcode >> 1;
             
             datafile << milestoneGroups[i] << "," << bounceCounter << "," << context.getTime() << "\n";
-            if (saveStateBool == true) {
+            if (saveStateBool == true && num_bounced_surfaces == 1) {
                 State myState = context.getOwner().getState(State::Positions | State::Velocities);
                 stringstream buffer;
                 stringstream number_str;
@@ -285,9 +309,10 @@ void CudaIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, const Mm
             bounceCounter++;
         }
         datafile.close(); // close data file
+        
         if (saveStatisticsBool == true) {
             //throw OpenMMException("Statistics file feature not working: saveStatisticsBool must be set to 'false' at this time");
-            /* // TODO: remove
+            // TODO: remove
             // This feature is temporarily disabled. With the improvement
             // of moving all boundary definitions to a single force group,
             // this feature is now broken. Since it is not actively used
@@ -296,7 +321,7 @@ void CudaIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, const Mm
             // array of milestone indices, similar to the function that
             // milestoneGroups used to have (but now, milestoneGroups
             // will merely be an array of size 1).
-            */
+            
             ofstream stats;
             stats.open(saveStatisticsFileName, ios_base::trunc);
             stats.setf(std::ios::fixed,std::ios::floatfield);
@@ -318,6 +343,7 @@ void CudaIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, const Mm
             stats.close();
             
         }
+        
     }
     
     // If one or more milestone boundaries were crossed, perform bounce
@@ -330,6 +356,7 @@ void CudaIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, const Mm
             &oldVelm->getDevicePointer()}; //,
         cu.executeKernel(kernelBounce, argsBounce, numAtoms, 128);
     }
+    
     // Update the time and step count.
 
     cu.setTime(cu.getTime()+stepSize);
@@ -493,6 +520,7 @@ void CudaIntegrateElberLangevinStepKernel::execute(ContextImpl& context, const E
     bool includeForces = false;
     bool includeEnergy = true;
     int endMilestoneGroup = 0;
+    int num_bounced_surfaces = 0;
     if (endSimulation == false) {
         // first check source milestone crossings
         for (int i=0; i<integrator.getNumSrcMilestoneGroups(); i++) {
@@ -506,6 +534,7 @@ void CudaIntegrateElberLangevinStepKernel::execute(ContextImpl& context, const E
                 // The source milestone has been crossed
                 if (endOnSrcMilestone == true) {
                     endSimulation = true;
+                    num_bounced_surfaces++;
                     ofstream datafile;
                     datafile.open(outputFileName, std::ios_base::app);
                     datafile << integrator.getSrcMilestoneGroup(i) << "," << crossingCounter << "," << context.getTime() << "\n";
@@ -529,6 +558,7 @@ void CudaIntegrateElberLangevinStepKernel::execute(ContextImpl& context, const E
             if (((value - oldvalue) != 0.0) && (cu.getTime() != 0.0)) {
                 // The destination milestone has been crossed
                 endSimulation = true;
+                num_bounced_surfaces++;
                 ofstream datafile;
                 datafile.open(outputFileName, std::ios_base::app);
                 if ((crossedSrcMilestone == true) || (endOnSrcMilestone == true)) {
@@ -542,11 +572,12 @@ void CudaIntegrateElberLangevinStepKernel::execute(ContextImpl& context, const E
         }
         if (endSimulation == true) {
             // Then a crossing event has just occurred.
-            if (saveStateBool == true) {
+            if (saveStateBool == true && num_bounced_surfaces == 1) {
                 State myState = context.getOwner().getState(State::Positions | State::Velocities);
                 stringstream buffer;
                 stringstream number_str;
-                number_str << "_" << endMilestoneGroup;
+                number_str << "_" << crossingCounter << "_" << endMilestoneGroup;
+                //number_str << "_" << endMilestoneGroup;
                 string trueFileName = saveStateFileName + number_str.str();
                 XmlSerializer::serialize<State>(&myState, "State", buffer);
                 ofstream statefile; // open datafile for writing
@@ -557,6 +588,7 @@ void CudaIntegrateElberLangevinStepKernel::execute(ContextImpl& context, const E
             crossingCounter ++;
         }
     }
+    
     cu.setTime(cu.getTime()+stepSize);
     cu.setStepCount(cu.getStepCount()+1);
     cu.reorderAtoms();
@@ -698,6 +730,10 @@ void CudaIntegrateMmvtLangevinMiddleStepKernel::execute(ContextImpl& context, co
     double temperature = integrator.getTemperature();
     double friction = integrator.getFriction();
     double stepSize = integrator.getStepSize();
+    float value = 0.0;
+    bool includeForces = false;
+    bool includeEnergy = true;
+    
     cu.getIntegrationUtilities().setNextStepSize(stepSize);
     if (temperature != prevTemp || friction != prevFriction || stepSize != prevStepSize) {
         // Calculate the integration parameters.
@@ -712,6 +748,13 @@ void CudaIntegrateMmvtLangevinMiddleStepKernel::execute(ContextImpl& context, co
         prevTemp = temperature;
         prevFriction = friction;
         prevStepSize = stepSize;
+    }
+    
+    if (cu.getStepCount() <= 0) {
+        value = context.calcForcesAndEnergy(includeForces, includeEnergy, 2);
+        if (value > 0.0) { // take a step back and reverse velocities
+            throw OpenMMException("MMVT simulation bouncing on first step: the system will be trapped behind a boundary. Check and revise MMVT boundary definitions and/or atomic positions.");
+        }
     }
     
     // Call the first integration kernel.
@@ -743,7 +786,7 @@ void CudaIntegrateMmvtLangevinMiddleStepKernel::execute(ContextImpl& context, co
 
     integration.applyConstraints(integrator.getConstraintTolerance());
 
-    // Call the second integration kernel.
+    // Call the third integration kernel.
 
     CUdeviceptr posCorrection = (cu.getUseMixedPrecision() ? cu.getPosqCorrection().getDevicePointer() : 0);
     void* args3[] = {&numAtoms, &cu.getPosq().getDevicePointer(), 
@@ -756,24 +799,28 @@ void CudaIntegrateMmvtLangevinMiddleStepKernel::execute(ContextImpl& context, co
     integration.computeVirtualSites();
     
     // Monitor for one or more milestone crossings
-    float value = 0.0;
     int bitcode;
     bool bounced = false;
-    bool includeForces = false;
-    bool includeEnergy = true;
+    int num_bounced_surfaces = 0;
     
     //value = context.calcForcesAndEnergy(includeForces, includeEnergy, bitvector[i]);
     value = context.calcForcesAndEnergy(includeForces, includeEnergy, 2);
     if (value > 0.0) { // take a step back and reverse velocities
-        if (cu.getStepCount() <= 0)
-            throw OpenMMException("MMVT simulation bouncing on first step: the system will be trapped behind a boundary. Check and revise MMVT boundary definitions and/or atomic positions.");
-        
         bounced = true;
         // Write to output file
         ofstream datafile; // open datafile for writing
         datafile.open(outputFileName, std::ios_base::app); // append to file
         datafile.setf(std::ios::fixed,std::ios::floatfield);
         datafile.precision(3);
+        bitcode = static_cast<int>(value);
+        // check for corner bounce so as not to save state
+        for (int i=0; i<milestoneGroups.size(); i++) {
+            if ((bitcode % 2) != 0) {
+                // count the number of bounced surfaces
+                num_bounced_surfaces++;
+            }
+            bitcode = bitcode >> 1;
+        }
         bitcode = static_cast<int>(value);
         for (int i=0; i<integrator.getNumMilestoneGroups(); i++) {
             if ((bitcode % 2) == 0) {
@@ -784,7 +831,7 @@ void CudaIntegrateMmvtLangevinMiddleStepKernel::execute(ContextImpl& context, co
             bitcode = bitcode >> 1;
             
             datafile << milestoneGroups[i] << "," << bounceCounter << "," << context.getTime() << "\n";
-            if (saveStateBool == true) {
+            if (saveStateBool == true && num_bounced_surfaces == 1) {
                 State myState = context.getOwner().getState(State::Positions | State::Velocities);
                 stringstream buffer;
                 stringstream number_str;
@@ -859,8 +906,8 @@ void CudaIntegrateMmvtLangevinMiddleStepKernel::execute(ContextImpl& context, co
             &oldVelm->getDevicePointer()}; //,
         cu.executeKernel(kernelBounce, argsBounce, numAtoms, 128);
     }
+    
     // Update the time and step count.
-
     cu.setTime(cu.getTime()+stepSize);
     cu.setStepCount(cu.getStepCount()+1);
     incubationTime += stepSize;
@@ -1005,7 +1052,6 @@ void CudaIntegrateElberLangevinMiddleStepKernel::execute(ContextImpl& context, c
         prevFriction = friction;
         prevStepSize = stepSize;
     }
-    
     // Call the first integration kernel.
 
     int randomIndex = integration.prepareRandomNumbers(cu.getPaddedNumAtoms());
@@ -1052,6 +1098,7 @@ void CudaIntegrateElberLangevinMiddleStepKernel::execute(ContextImpl& context, c
     bool includeForces = false;
     bool includeEnergy = true;
     int endMilestoneGroup = 0;
+    int num_bounced_surfaces = 0;
     if (endSimulation == false) {
         // first check source milestone crossings
         for (int i=0; i<integrator.getNumSrcMilestoneGroups(); i++) {
@@ -1065,6 +1112,7 @@ void CudaIntegrateElberLangevinMiddleStepKernel::execute(ContextImpl& context, c
                 // The source milestone has been crossed
                 if (endOnSrcMilestone == true) {
                     endSimulation = true;
+                    num_bounced_surfaces++;
                     ofstream datafile;
                     datafile.open(outputFileName, std::ios_base::app);
                     datafile << integrator.getSrcMilestoneGroup(i) << "," << crossingCounter << "," << context.getTime() << "\n";
@@ -1088,6 +1136,7 @@ void CudaIntegrateElberLangevinMiddleStepKernel::execute(ContextImpl& context, c
             if (((value - oldvalue) != 0.0) && (cu.getTime() != 0.0)) {
                 // The destination milestone has been crossed
                 endSimulation = true;
+                num_bounced_surfaces++;
                 ofstream datafile;
                 datafile.open(outputFileName, std::ios_base::app);
                 if ((crossedSrcMilestone == true) || (endOnSrcMilestone == true)) {
@@ -1101,7 +1150,7 @@ void CudaIntegrateElberLangevinMiddleStepKernel::execute(ContextImpl& context, c
         }
         if (endSimulation == true) {
             // Then a crossing event has just occurred.
-            if (saveStateBool == true) {
+            if (saveStateBool == true && num_bounced_surfaces == 1) {
                 State myState = context.getOwner().getState(State::Positions | State::Velocities);
                 stringstream buffer;
                 stringstream number_str;
@@ -1116,6 +1165,8 @@ void CudaIntegrateElberLangevinMiddleStepKernel::execute(ContextImpl& context, c
             crossingCounter ++;
         }
     }
+    
+    // Update timesteps
     cu.setTime(cu.getTime()+stepSize);
     cu.setStepCount(cu.getStepCount()+1);
     cu.reorderAtoms();

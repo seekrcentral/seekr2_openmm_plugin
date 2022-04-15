@@ -80,6 +80,22 @@ conda install -c conda-forge seekr2_openmm_plugin
 
 OpenMM will be installed automatically alongside the plugin.
 
+## HOW TO SUBMIT UPDATES TO CONDA-FORGE FROM FEEDSTOCK
+
+Update the feedstock file seekr2_openmm_plugin-feedstock/meta.yaml to have
+the latest version number. Also, you will need to download the tarball from
+https://github.com/seekrcentral/seekr2_openmm_plugin/archive/refs/tags/{{ version }}.tar.gz
+
+Then, compute the sha sum:
+
+shasum -a 256 seekr2_openmm_plugin-x.y.z.tar.gz
+
+If this is a new version, set the build number to 0, otherwise, increment the
+build number.
+
+Commit these changes to the feedstock and push to your repository. Then, 
+lodge a pull request with Conda-forge.
+
 ## INSTALLATION OF OPENMM FROM SOURCE
 
 Under certain circumstances, users may with to install this plugin from source.

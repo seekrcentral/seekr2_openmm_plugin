@@ -170,11 +170,6 @@ void ReferenceIntegrateMmvtLangevinStepKernel::initialize(const System& system, 
     } else {
         saveStatisticsBool = true;
     }
-    /* //TODO: marked for removal
-    bitvector.clear();
-    for (int i=0; i<milestoneGroups.size(); i++) {
-        bitvector.push_back(pow(2,milestoneGroups[i]));
-    }*/
     bounceCounter = integrator.getBounceCounter();
     incubationTime = 0.0;
     firstCrossingTime = 0.0;
@@ -201,6 +196,9 @@ void ReferenceIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, con
     double temperature = integrator.getTemperature();
     double friction = integrator.getFriction();
     double stepSize = integrator.getStepSize();
+    bool includeForces = false;
+    bool includeEnergy = true;
+    double value = 0.0; // The value to monitor for crossing events
     
     vector<Vec3>& posData = extractPositions(context);
     vector<Vec3> oldPosData(posData); // this will create an exact copy of old positions
@@ -208,7 +206,6 @@ void ReferenceIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, con
     vector<Vec3> oldVelData(velData); // this will create an exact copy of old velocities
     vector<Vec3>& forceData = extractForces(context);
     vector<Vec3> oldForceData(forceData); // this will create an exact copy of old forces
-    
     
     map<string, double> globalParameters;
     for (auto& name : globalParameterNames)
@@ -231,30 +228,44 @@ void ReferenceIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, con
         prevStepSize = stepSize;
     }
     
+    if (data.stepCount <= 0) {
+        value = context.calcForcesAndEnergy(includeForces, includeEnergy, 2);
+        if (value > 0.0) {
+            throw OpenMMException("MMVT simulation bouncing on first step: the system is trapped behind a boundary. Check and revise MMVT boundary definitions and atomic positions.");
+        }
+    }
+    
     dynamics->update(context.getSystem(), posData, velData, forceData, masses, integrator.getConstraintTolerance());
     // EXTRACT POSITIONS HERE AND TEST FOR CRITERIA
     // NOTE: context positions and velocities are changed by reference
     // test if criteria satisfied
     // then reverse velocities by reference
     // restore old positions
-    bool includeForces = false;
-    bool includeEnergy = true;
-    double value = 0.0; // The value to monitor for crossing events
     int bitcode;
     bool bounced = false;
+    int num_bounced_surfaces = 0;
     // Handle bit string here
     value = context.calcForcesAndEnergy(includeForces, includeEnergy, 2);
     if (value > 0.0) { // take a step back and reverse velocities
-        if (data.stepCount <= 0)
-    	    throw OpenMMException("MMVT simulation bouncing on first step: the system is trapped behind a boundary. Check and revise MMVT boundary definitions and atomic positions.");
+        bounced = true;
+        //if (data.stepCount <= 0)
+    	//    throw OpenMMException("MMVT simulation bouncing on first step: the system is trapped behind a boundary. Check and revise MMVT boundary definitions and atomic positions.");
         
         ofstream datafile; // open datafile for writing
         datafile.open(outputFileName, std::ios_base::app); // append to file
         datafile.setf(std::ios::fixed,std::ios::floatfield);
         datafile.precision(3);
         bitcode = static_cast<int>(value);
+        // check for corner bounce so as not to save state
         for (int i=0; i<milestoneGroups.size(); i++) {
-            bounced = true;
+            if ((bitcode % 2) != 0) {
+                // count the number of bounced surfaces
+                num_bounced_surfaces++;
+            }
+            bitcode = bitcode >> 1;
+        }
+        bitcode = static_cast<int>(value);
+        for (int i=0; i<milestoneGroups.size(); i++) {
             // Write to output file
             if ((bitcode % 2) == 0) {
                 // if value is not showing this as crossed, continue
@@ -263,7 +274,7 @@ void ReferenceIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, con
             }
             bitcode = bitcode >> 1;
             datafile << milestoneGroups[i] << "," << bounceCounter << ","<< context.getTime() << "\n";
-            if (saveStateBool == true) {
+            if (saveStateBool == true && num_bounced_surfaces == 1) {
                 State myState = context.getOwner().getState(State::Positions | State::Velocities);
                 stringstream buffer;
                 stringstream number_str;
@@ -347,7 +358,7 @@ void ReferenceIntegrateElberLangevinStepKernel::initialize(const System& system,
     SimTKOpenMMUtilities::setRandomNumberSeed((unsigned int) integrator.getRandomNumberSeed());
     
     outputFileName = integrator.getOutputFileName();
-    
+    endOnSrcMilestone = integrator.getEndOnSrcMilestone();
     for (int i=0; i<integrator.getNumSrcMilestoneGroups(); i++) {
         bool foundForceGroup=false;
         for (int j=0; j<system.getNumForces(); j++) {
@@ -389,7 +400,7 @@ void ReferenceIntegrateElberLangevinStepKernel::initialize(const System& system,
     crossingCounter = integrator.getCrossingCounter();
     assert(data.stepCount == 0);
     assert(data.time == 0.0);
-    ofstream datafile; // open datafile for writing
+    ifstream datafile; // open datafile for writing
     datafile.open(outputFileName);
     if (datafile) {
         output_file_already_exists = true;
@@ -447,7 +458,8 @@ void ReferenceIntegrateElberLangevinStepKernel::execute(ContextImpl& context, co
     float oldvalue = 0.0;
     bool includeForces = false;
     bool includeEnergy = true;
-    
+    int endMilestoneGroup = 0;
+    int num_bounced_surfaces = 0;
     if (endSimulation == false) {
         // first check source milestone crossings
         for (int i=0; i<integrator.getNumSrcMilestoneGroups(); i++) {
@@ -461,9 +473,11 @@ void ReferenceIntegrateElberLangevinStepKernel::execute(ContextImpl& context, co
                 // The source milestone has been crossed
                 if (endOnSrcMilestone == true) {
                     endSimulation = true;
+                    num_bounced_surfaces++;
                     ofstream datafile;
                     datafile.open(outputFileName, std::ios_base::app);
                     datafile << integrator.getSrcMilestoneGroup(i) << "," << crossingCounter << "," << context.getTime() << "\n";
+                    endMilestoneGroup = integrator.getSrcMilestoneGroup(i);
                     datafile.close();
                 } else {
                     crossedSrcMilestone = true;
@@ -484,6 +498,7 @@ void ReferenceIntegrateElberLangevinStepKernel::execute(ContextImpl& context, co
             if ((value - oldvalue) != 0.0) {
                 // The destination milestone has been crossed
                 endSimulation = true;
+                num_bounced_surfaces++;
                 ofstream datafile;
                 datafile.open(outputFileName, std::ios_base::app);
                 if ((crossedSrcMilestone == true) || (endOnSrcMilestone == true)) {
@@ -491,17 +506,19 @@ void ReferenceIntegrateElberLangevinStepKernel::execute(ContextImpl& context, co
                 } else {
                     datafile << integrator.getDestMilestoneGroup(i) << "*," << crossingCounter << "," << context.getTime() << "\n";
                 }
+                endMilestoneGroup = integrator.getDestMilestoneGroup(i);
                 datafile.close();
             } 
         }
         
         if (endSimulation == true) {
             // Then a crossing event has just occurred.
-            if (saveStateBool == true) {
+            if (saveStateBool == true && num_bounced_surfaces == 1) {
                 State myState = context.getOwner().getState(State::Positions | State::Velocities);
                 stringstream buffer;
                 stringstream number_str;
-                number_str << "_" << crossingCounter << "_" << crossingCounter;
+                //number_str << "_" << crossingCounter << "_" << crossingCounter;
+                number_str << "_" << crossingCounter << "_" << endMilestoneGroup;
                 string trueFileName = saveStateFileName + number_str.str();
                 XmlSerializer::serialize<State>(&myState, "State", buffer);
                 ofstream statefile; // open datafile for writing
@@ -512,7 +529,6 @@ void ReferenceIntegrateElberLangevinStepKernel::execute(ContextImpl& context, co
             crossingCounter ++;
         }
     }
-    
     data.time += stepSize;
     data.stepCount++;
 }
@@ -595,6 +611,9 @@ void ReferenceIntegrateMmvtLangevinMiddleStepKernel::execute(ContextImpl& contex
     double temperature = integrator.getTemperature();
     double friction = integrator.getFriction();
     double stepSize = integrator.getStepSize();
+    bool includeForces = false;
+    bool includeEnergy = true;
+    double value = 0.0; // The value to monitor for crossing events
     
     vector<Vec3>& posData = extractPositions(context);
     vector<Vec3> oldPosData(posData); // this will create an exact copy of old positions
@@ -602,7 +621,6 @@ void ReferenceIntegrateMmvtLangevinMiddleStepKernel::execute(ContextImpl& contex
     vector<Vec3> oldVelData(velData); // this will create an exact copy of old velocities
     vector<Vec3>& forceData = extractForces(context);
     vector<Vec3> oldForceData(forceData); // this will create an exact copy of old forces
-    
     
     map<string, double> globalParameters;
     for (auto& name : globalParameterNames)
@@ -625,27 +643,38 @@ void ReferenceIntegrateMmvtLangevinMiddleStepKernel::execute(ContextImpl& contex
         prevStepSize = stepSize;
     }
     
+    if (data.stepCount <= 0) {
+        value = context.calcForcesAndEnergy(includeForces, includeEnergy, 2);
+        if (value > 0.0) {
+            throw OpenMMException("MMVT simulation bouncing on first step: the system is trapped behind a boundary. Check and revise MMVT boundary definitions and atomic positions.");
+        }
+    }
+    
     dynamics->update(context, posData, velData, masses, integrator.getConstraintTolerance());
     // EXTRACT POSITIONS HERE AND TEST FOR CRITERIA
     // NOTE: context positions and velocities are changed by reference
     // test if criteria satisfied
     // then reverse velocities by reference
     // restore old positions
-    bool includeForces = false;
-    bool includeEnergy = true;
-    double value = 0.0; // The value to monitor for crossing events
     int bitcode;
     bool bounced = false;
+    int num_bounced_surfaces = 0;
     // Handle bit string here
     value = context.calcForcesAndEnergy(includeForces, includeEnergy, 2);
     if (value > 0.0) { // take a step back and reverse velocities
-        if (data.stepCount <= 0)
-            throw OpenMMException("MMVT simulation bouncing on first step: the system is trapped behind a boundary. Check and revise MMVT boundary definitions and atomic positions.");
-        
         ofstream datafile; // open datafile for writing
         datafile.open(outputFileName, std::ios_base::app); // append to file
         datafile.setf(std::ios::fixed,std::ios::floatfield);
         datafile.precision(3);
+        bitcode = static_cast<int>(value);
+        // check for corner bounce so as not to save state
+        for (int i=0; i<milestoneGroups.size(); i++) {
+            if ((bitcode % 2) != 0) {
+                // count the number of bounced surfaces
+                num_bounced_surfaces++;
+            }
+            bitcode = bitcode >> 1;
+        }
         bitcode = static_cast<int>(value);
         for (int i=0; i<milestoneGroups.size(); i++) {
             bounced = true;
@@ -657,7 +686,7 @@ void ReferenceIntegrateMmvtLangevinMiddleStepKernel::execute(ContextImpl& contex
             }
             bitcode = bitcode >> 1;
             datafile << milestoneGroups[i] << "," << bounceCounter << ","<< context.getTime() << "\n";
-            if (saveStateBool == true) {
+            if (saveStateBool == true && num_bounced_surfaces == 1) {
                 State myState = context.getOwner().getState(State::Positions | State::Velocities);
                 stringstream buffer;
                 stringstream number_str;
@@ -715,7 +744,7 @@ void ReferenceIntegrateMmvtLangevinMiddleStepKernel::execute(ContextImpl& contex
         }
         forceData = oldForceData;
     }
-    
+
     data.time += stepSize;
     data.stepCount++;
     incubationTime += stepSize;
@@ -741,7 +770,7 @@ void ReferenceIntegrateElberLangevinMiddleStepKernel::initialize(const System& s
     SimTKOpenMMUtilities::setRandomNumberSeed((unsigned int) integrator.getRandomNumberSeed());
     
     outputFileName = integrator.getOutputFileName();
-    
+    endOnSrcMilestone = integrator.getEndOnSrcMilestone();
     for (int i=0; i<integrator.getNumSrcMilestoneGroups(); i++) {
         bool foundForceGroup=false;
         for (int j=0; j<system.getNumForces(); j++) {
@@ -837,6 +866,7 @@ void ReferenceIntegrateElberLangevinMiddleStepKernel::execute(ContextImpl& conte
     // then reverse velocities by reference
     // restore old positions
     
+    int num_bounced_surfaces = 0;
     float value = 0.0;
     float oldvalue = 0.0;
     bool includeForces = false;
@@ -855,6 +885,7 @@ void ReferenceIntegrateElberLangevinMiddleStepKernel::execute(ContextImpl& conte
                 // The source milestone has been crossed
                 if (endOnSrcMilestone == true) {
                     endSimulation = true;
+                    num_bounced_surfaces++;
                     ofstream datafile;
                     datafile.open(outputFileName, std::ios_base::app);
                     datafile << integrator.getSrcMilestoneGroup(i) << "," << crossingCounter << "," << context.getTime() << "\n";
@@ -878,6 +909,7 @@ void ReferenceIntegrateElberLangevinMiddleStepKernel::execute(ContextImpl& conte
             if ((value - oldvalue) != 0.0) {
                 // The destination milestone has been crossed
                 endSimulation = true;
+                num_bounced_surfaces++;
                 ofstream datafile;
                 datafile.open(outputFileName, std::ios_base::app);
                 if ((crossedSrcMilestone == true) || (endOnSrcMilestone == true)) {
@@ -891,7 +923,7 @@ void ReferenceIntegrateElberLangevinMiddleStepKernel::execute(ContextImpl& conte
         
         if (endSimulation == true) {
             // Then a crossing event has just occurred.
-            if (saveStateBool == true) {
+            if (saveStateBool == true && num_bounced_surfaces == 1) {
                 State myState = context.getOwner().getState(State::Positions | State::Velocities);
                 stringstream buffer;
                 stringstream number_str;
@@ -906,7 +938,6 @@ void ReferenceIntegrateElberLangevinMiddleStepKernel::execute(ContextImpl& conte
             crossingCounter ++;
         }
     }
-    
     data.time += stepSize;
     data.stepCount++;
 }

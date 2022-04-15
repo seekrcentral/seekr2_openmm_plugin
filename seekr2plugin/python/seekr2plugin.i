@@ -50,6 +50,22 @@ except:
 %apply std::vector<int> &INPUT { std::vector<int> & particles };
 %apply std::vector<double> &INPUT { std::vector<double> & weights };
 
+%pythonappend Seekr2Plugin::MmvtLangevinIntegrator::getTemperature() const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinIntegrator::setTemperature(double temperature) const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinIntegrator::getFriction() const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinIntegrator::setFriction(double coeff) const %{
+    
+%}
+
 %pythonappend Seekr2Plugin::MmvtLangevinIntegrator::getStepSize() const %{
     
 %}
@@ -120,6 +136,22 @@ except:
 
 %pythonappend Seekr2Plugin::MmvtLangevinIntegrator::setBounceCounter(int counter) const %{
 
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinIntegrator::getTemperature() const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinIntegrator::setTemperature(double temperature) const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinIntegrator::getFriction() const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinIntegrator::setFriction(double coeff) const %{
+    
 %}
 
 %pythonappend Seekr2Plugin::ElberLangevinIntegrator::getStepSize() const %{
@@ -206,6 +238,22 @@ except:
 
 %}
 
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::getTemperature() const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::setTemperature(double size) const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::getFriction() const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::setFriction(double coeff) const %{
+    
+%}
+
 %pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::getStepSize() const %{
     
 %}
@@ -276,6 +324,22 @@ except:
 
 %pythonappend Seekr2Plugin::MmvtLangevinMiddleIntegrator::setBounceCounter(int counter) const %{
 
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::getTemperature() const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::setTemperature(double size) const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::getFriction() const %{
+    
+%}
+
+%pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::setFriction(double coeff) const %{
+    
 %}
 
 %pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::getStepSize() const %{
@@ -369,6 +433,14 @@ public:
     MmvtLangevinIntegrator(double temperature, double frictionCoeff, 
         double stepSize, std::string fileName);
     
+    double getTemperature() const;
+    
+    void setTemperature(double temperature);
+    
+    double getFriction() const;
+    
+    void setFriction(double coeff);
+    
     double getStepSize() const;
     
     void setStepSize(double size);
@@ -410,6 +482,14 @@ class ElberLangevinIntegrator : public OpenMM::Integrator {
 public:
     ElberLangevinIntegrator(double temperature, double frictionCoeff, 
         double stepSize, std::string fileName);
+    
+    double getTemperature() const;
+    
+    void setTemperature(double temperature);
+    
+    double getFriction() const;
+    
+    void setFriction(double coeff);
     
     double getStepSize() const;
     
@@ -459,6 +539,14 @@ public:
     MmvtLangevinMiddleIntegrator(double temperature, double frictionCoeff, 
         double stepSize, std::string fileName);
     
+    double getTemperature() const;
+    
+    void setTemperature(double temperature);
+    
+    double getFriction() const;
+    
+    void setFriction(double coeff);
+    
     double getStepSize() const;
     
     void setStepSize(double size);
@@ -500,6 +588,14 @@ class ElberLangevinMiddleIntegrator : public OpenMM::Integrator {
 public:
     ElberLangevinMiddleIntegrator(double temperature, double frictionCoeff, 
         double stepSize, std::string fileName);
+    
+    double getTemperature() const;
+    
+    void setTemperature(double temperature);
+    
+    double getFriction() const;
+    
+    void setFriction(double coeff);
     
     double getStepSize() const;
     
