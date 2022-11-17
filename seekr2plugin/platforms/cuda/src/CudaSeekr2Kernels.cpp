@@ -246,7 +246,7 @@ void CudaIntegrateMmvtLangevinStepKernel::execute(ContextImpl& context, const Mm
     
     //value = context.calcForcesAndEnergy(includeForces, includeEnergy, bitvector[i]);
     value = context.calcForcesAndEnergy(includeForces, includeEnergy, 2);
-    
+        
     if (value > 0.0) { // take a step back and reverse velocities
         //if (cu.getStepCount() <= 0)
         //    throw OpenMMException("MMVT simulation bouncing on first step: the system will be trapped behind a boundary. Check and revise MMVT boundary definitions and/or atomic positions.");

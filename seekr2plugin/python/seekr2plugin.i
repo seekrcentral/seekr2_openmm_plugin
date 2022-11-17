@@ -34,6 +34,18 @@ namespace std {
 #include "openmm/RPMDMonteCarloBarostat.h"
 %}
 
+%exception {
+    try {
+        $action
+    }
+    catch (std::exception &e) {
+        PyObject* mm = PyImport_AddModule("openmm");
+        PyObject* openmm_exception = PyObject_GetAttrString(mm, "OpenMMException");
+        PyErr_SetString(openmm_exception, const_cast<char*>(e.what()));
+        return NULL;
+    }
+}
+
 %pythoncode %{
 try:
     import openmm as mm
@@ -41,6 +53,7 @@ try:
 except:
     import simtk.openmm as mm
     import simtk.unit as unit
+    from testInstallation import testInstallation
 %}
 
 /*
