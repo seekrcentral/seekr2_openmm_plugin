@@ -116,10 +116,11 @@ static double computeShiftedKineticEnergy(ContextImpl& context, vector<double>& 
 }
 
 ReferenceIntegrateMmvtLangevinStepKernel::~ReferenceIntegrateMmvtLangevinStepKernel() {
-    
+    cout << "mark100\n";
 }
 
 void ReferenceIntegrateMmvtLangevinStepKernel::initialize(const System& system, const MmvtLangevinIntegrator& integrator) {
+    cout << "mark10\n";
     int numParticles = system.getNumParticles();
     bool output_file_already_exists;
     masses.resize(numParticles);

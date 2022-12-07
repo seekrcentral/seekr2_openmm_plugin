@@ -34,7 +34,7 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * This tests the Reference implementation of MmvtLangevinIntegrator.
+ * This tests the Reference implementation of MmvtLangevinMiddleIntegrator.
  */
 
 #include "MmvtLangevinMiddleIntegrator.h"
