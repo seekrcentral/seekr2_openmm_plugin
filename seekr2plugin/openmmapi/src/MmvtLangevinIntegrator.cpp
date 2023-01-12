@@ -61,7 +61,6 @@ MmvtLangevinIntegrator::MmvtLangevinIntegrator(double temperature,
                           double frictionCoeff, double stepSize, 
                           string fileName) : temperature(temperature), 
                           friction(frictionCoeff) {
-    std::cout << "mark1\n";
     setStepSize(stepSize);
     setRandomNumberSeed(0);
     setOutputFileName(fileName);
@@ -69,7 +68,6 @@ MmvtLangevinIntegrator::MmvtLangevinIntegrator(double temperature,
     setConstraintTolerance(1e-5);
     setSaveStatisticsFileName("");
     setBounceCounter(0);
-    std::cout << "mark100\n";
 }
 
 void MmvtLangevinIntegrator::initialize(ContextImpl& contextRef) {
