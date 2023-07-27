@@ -7,6 +7,7 @@
 
 %import(module="simtk.openmm") "swig/OpenMMSwigHeaders.i"
 %include "swig/typemaps.i"
+%include "factory.i"
 
 /*
  * The following lines are needed to handle std::vector.

@@ -4,7 +4,7 @@
 
 project(seekr2_openmm_plugin)
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.21)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.17)
 include(CMakePrintHelpers)
 
 # We need to know where OpenMM is installed so we can access the headers and libraries.
