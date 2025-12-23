@@ -74,6 +74,11 @@ static vector<Vec3>& extractForces(ContextImpl& context) {
     return *((vector<Vec3>*) data->forces);
 }
 
+static Vec3* extractBoxVectors(ContextImpl& context) {
+    ReferencePlatform::PlatformData* data = reinterpret_cast<ReferencePlatform::PlatformData*>(context.getPlatformData());
+    return data->periodicBoxVectors;
+}
+
 static ReferenceConstraints& extractConstraints(ContextImpl& context) {
     ReferencePlatform::PlatformData* data = reinterpret_cast<ReferencePlatform::PlatformData*>(context.getPlatformData());
     return *(ReferenceConstraints*) data->constraints;
@@ -231,7 +236,7 @@ void ReferenceIntegrateMmvtLangevinMiddleStepKernel::execute(ContextImpl& contex
         }
     }
     
-    dynamics->update(context, posData, velData, masses, integrator.getConstraintTolerance());
+    dynamics->update(context, posData, velData, masses, integrator.getConstraintTolerance(), extractBoxVectors(context));
     // EXTRACT POSITIONS HERE AND TEST FOR CRITERIA
     // NOTE: context positions and velocities are changed by reference
     // test if criteria satisfied
@@ -441,7 +446,7 @@ void ReferenceIntegrateElberLangevinMiddleStepKernel::execute(ContextImpl& conte
         prevStepSize = stepSize;
     }
     
-    dynamics->update(context, posData, velData, masses, integrator.getConstraintTolerance());
+    dynamics->update(context, posData, velData, masses, integrator.getConstraintTolerance(), extractBoxVectors(context));
     // EXTRACT POSITIONS HERE AND TEST FOR CRITERIA
     // NOTE: context positions and velocities are changed by reference
     // test if criteria satisfied
