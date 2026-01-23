@@ -7,6 +7,7 @@
 
 %include "factory.i"
 %import(module="simtk.openmm") "swig/OpenMMSwigHeaders.i"
+%import(module="openmm") "swig/OpenMMSwigHeaders.i"
 %include "swig/typemaps.i"
 
 /*
@@ -249,6 +250,10 @@ except:
 %pythonappend Seekr2Plugin::ElberLangevinMiddleIntegrator::setEndOnSrcMilestone(bool endOnSrc) const %{
 
 %}
+
+namespace OpenMM {
+    class Integrator;
+}
 
 namespace Seekr2Plugin {
 
