@@ -64,46 +64,28 @@ except:
     from testInstallation import testInstallation
 
 def printKeyInformationDEBUG():
-    import sys
-
-    print("Python:", sys.version)
-
-    import openmm
-    import openmm.openmm as mm
-    from openmm import unit
-
-    print("openmm module:", openmm.__file__)
-    print("mm module:", mm.__file__)
-
-    # Is simtk present at all?
-    try:
-        import simtk.openmm as som
-        print("simtk.openmm module:", som.__file__)
-        SIMTK_PRESENT = True
-    except Exception as e:
-        print("simtk.openmm import failed:", repr(e))
-        SIMTK_PRESENT = False
-
-    # Import your plugin integrator the way SEEKR2 does
+    import openmm, openmm.openmm as mm
+    import openmm.unit as unit
     import seekr2plugin
+    import importlib, os, sys
+    print("openmm package:", openmm.__file__)
+    print("openmm/openmm.py:", mm.__file__)
 
-    # Create a minimal system + integrator to probe types
-    system = mm.System()
-    mass = 1.0 * unit.dalton
-    system.addParticle(mass)
-    integrator = seekr2plugin.MmvtLangevinMiddleIntegrator(300*unit.kelvin, 1/unit.picosecond, 0.002*unit.picoseconds, "test.txt")
+    # _openmm is the compiled extension inside the openmm wheel/conda pkg
+    import openmm._openmm as _openmm
+    print("openmm._openmm:", _openmm.__file__)
 
-    print("type(system):", type(system), "from", type(system).__module__)
-    print("type(integrator):", type(integrator), "from", type(integrator).__module__)
-    print("isinstance(integrator, mm.Integrator):", isinstance(integrator, mm.Integrator))
-
-    # Try Context
-    try:
-        ctx = mm.Context(system, integrator)
-        print("Context OK")
-    except Exception as e:
-        print("Context FAILED:", repr(e))
-
+    print("seekr2plugin:", seekr2plugin.__file__)
+    
+    i = seekr2plugin.MmvtLangevinMiddleIntegrator(300*unit.kelvin, 1/unit.picosecond, 0.004*unit.picoseconds, "/tmp/dummy.txt")
+    print("python type:", type(i))
+    print("bases:", type(i).__mro__[:5])
+    print("isinstance(i, mm.Integrator):", isinstance(i, mm.Integrator))
+    # Sometimes SWIG exposes this kind of info:
+    for attr in ["this", "thisown"]:
+        print(attr, "exists?", hasattr(i, attr))
+        if hasattr(i, attr):
+            print(attr, "=", getattr(i, attr))
     return
 
 def testSeekr2Plugin():
@@ -120,9 +102,7 @@ def testSeekr2Plugin():
     residue = topology.addResidue("UNK", chain)
     topology.addAtom(atom_name, element, residue)
     integrator = MmvtLangevinMiddleIntegrator(300*unit.kelvin, 1/unit.picosecond, 0.004*unit.picoseconds, "/tmp/dummy.txt")
-    platform = mm.Platform.getPlatformByName('CUDA')
-    properties = {'CudaDeviceIndex': '0', 'CudaPrecision': 'mixed'}
-    simulation = mm.app.Simulation(topology, system, integrator, platform, properties)
+    simulation = mm.app.Simulation(topology, system, integrator)
     # Successfully created a CUDA simulation object and Context object.
     return
 %}
