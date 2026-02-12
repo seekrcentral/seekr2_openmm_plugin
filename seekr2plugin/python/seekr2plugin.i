@@ -89,7 +89,9 @@ def printKeyInformationDEBUG():
 
     # Create a minimal system + integrator to probe types
     system = mm.System()
-    integrator = seekr2plugin.MmvtLangevinMiddleIntegrator(300*unit.kelvin, 1/unit.picosecond, 0.002*unit.picoseconds)
+    mass = 1.0 * unit.dalton
+    system.addParticle(mass)
+    integrator = seekr2plugin.MmvtLangevinMiddleIntegrator(300*unit.kelvin, 1/unit.picosecond, 0.002*unit.picoseconds, "test.txt")
 
     print("type(system):", type(system), "from", type(system).__module__)
     print("type(integrator):", type(integrator), "from", type(integrator).__module__)
