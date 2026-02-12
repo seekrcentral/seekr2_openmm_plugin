@@ -58,31 +58,6 @@ import openmm
 import openmm.app as openmm_app
 import openmm.unit as unit
 
-def printKeyInformationDEBUG():
-    import openmm, openmm.openmm as mm
-    import openmm.unit as unit
-    import seekr2plugin
-    import importlib, os, sys
-    print("openmm package:", openmm.__file__)
-    print("openmm/openmm.py:", mm.__file__)
-
-    # _openmm is the compiled extension inside the openmm wheel/conda pkg
-    import openmm._openmm as _openmm
-    print("openmm._openmm:", _openmm.__file__)
-
-    print("seekr2plugin:", seekr2plugin.__file__)
-    
-    i = seekr2plugin.MmvtLangevinMiddleIntegrator(300*unit.kelvin, 1/unit.picosecond, 0.004*unit.picoseconds, "/tmp/dummy.txt")
-    print("python type:", type(i))
-    print("bases:", type(i).__mro__[:5])
-    print("isinstance(i, mm.Integrator):", isinstance(i, mm.Integrator))
-    # Sometimes SWIG exposes this kind of info:
-    for attr in ["this", "thisown"]:
-        print(attr, "exists?", hasattr(i, attr))
-        if hasattr(i, attr):
-            print(attr, "=", getattr(i, attr))
-    return
-
 def testSeekr2Plugin():
     system = openmm.System()
     topology = openmm_app.Topology()
@@ -98,7 +73,7 @@ def testSeekr2Plugin():
     topology.addAtom(atom_name, element, residue)
     integrator = MmvtLangevinMiddleIntegrator(300*unit.kelvin, 1/unit.picosecond, 0.004*unit.picoseconds, "/tmp/dummy.txt")
     simulation = openmm_app.Simulation(topology, system, integrator)
-    # Successfully created a CUDA simulation object and Context object.
+    # Successfully created a Ref simulation object and Context object.
     return
 %}
 
