@@ -6,7 +6,6 @@
 %module seekr2plugin
 
 %include "factory.i"
-%import(module="simtk.openmm") "swig/OpenMMSwigHeaders.i"
 %import(module="openmm") "swig/OpenMMSwigHeaders.i"
 %include "swig/typemaps.i"
 
@@ -55,13 +54,9 @@ using namespace Seekr2Plugin;
 }
 
 %pythoncode %{
-try:
-    import openmm as mm
-    import openmm.unit as unit
-except:
-    import simtk.openmm as mm
-    import simtk.unit as unit
-    from testInstallation import testInstallation
+import openmm
+import openmm.app as openmm_app
+import openmm.unit as unit
 
 def printKeyInformationDEBUG():
     import openmm, openmm.openmm as mm
@@ -89,20 +84,20 @@ def printKeyInformationDEBUG():
     return
 
 def testSeekr2Plugin():
-    system = mm.System()
-    topology = mm.app.Topology()
+    system = openmm.System()
+    topology = openmm_app.Topology()
     mass = 1.0 * unit.dalton
     system.addParticle(mass)
     atom_name = "X0"
-    if not atom_name in mm.app.element.Element._elements_by_symbol:
-        element = mm.app.element.Element(0, atom_name, atom_name, mass)
+    if not atom_name in openmm_app.element.Element._elements_by_symbol:
+        element = openmm_app.element.Element(0, atom_name, atom_name, mass)
     else:
-        element = mm.app.element.Element._elements_by_symbol[atom_name]
+        element = openmm_app.element.Element._elements_by_symbol[atom_name]
     chain = topology.addChain()
     residue = topology.addResidue("UNK", chain)
     topology.addAtom(atom_name, element, residue)
     integrator = MmvtLangevinMiddleIntegrator(300*unit.kelvin, 1/unit.picosecond, 0.004*unit.picoseconds, "/tmp/dummy.txt")
-    simulation = mm.app.Simulation(topology, system, integrator)
+    simulation = openmm_app.Simulation(topology, system, integrator)
     # Successfully created a CUDA simulation object and Context object.
     return
 %}
